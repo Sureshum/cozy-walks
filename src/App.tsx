@@ -5,14 +5,13 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { COZY_MESSAGES } from './utils/constants';
 import MapScreen from './components/MapScreen';
-import APIKeySetup from './components/APIKeySetup';
 import AuthScreen from './components/AuthScreen';
 import AsciiBackground from './components/AsciiBackground';
 import './App.css';
 
 // Componente interno que maneja el estado de autenticación
 function AppInner() {
-  const { isAuthenticated, isLoading, needsApiKey, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [showWelcome, setShowWelcome] = useState(false);
 
   // Si está cargando, mostrar loader
@@ -31,17 +30,12 @@ function AppInner() {
     );
   }
 
-  // Si no hay API key configurada, mostrar pantalla de setup
-  if (needsApiKey || !user?.settings.apiKey) {
-    return <APIKeySetup />;
-  }
-
   // Si no está autenticado, mostrar login/registro
   if (!isAuthenticated) {
     return <AuthScreen />;
   }
 
-  // Usuario autenticado y con API key - mostrar app principal
+  // Usuario autenticado - mostrar app principal
   return (
     <div className="min-h-screen bg-cozy-50 relative overflow-hidden">
       <AppProvider>
@@ -63,7 +57,7 @@ function AppInner() {
                 </div>
               </div>
               <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-cozy-200 shadow-cozy">
-                <span className="text-xs font-medium text-cozy-600">📱 PWA Ready</span>
+                <span className="text-xs font-medium text-cozy-600">📱 PWA Ready · 100% Gratis</span>
               </div>
             </div>
           </header>
@@ -71,14 +65,14 @@ function AppInner() {
           {/* Contenido principal - Mapa a pantalla completa */}
           <div className="flex-1 relative px-4 md:px-6 pb-4 md:pb-6">
             <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] min-h-[500px] max-h-[800px] rounded-3xl overflow-hidden shadow-cozy-lg">
-              <MapScreen apiKey={user.settings.apiKey} />
+              <MapScreen />
             </div>
           </div>
 
           {/* Footer sutil */}
           <footer className="relative z-20 px-4 py-3 md:px-6">
             <p className="text-center text-xs text-cozy-400 max-w-4xl mx-auto">
-              Hecho con 💚 para caminantes soñadores · Datos de mapa © Google Maps
+              Hecho con 💚 para caminantes soñadores · Mapas por <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener" className="underline hover:text-cozy-600">OpenStreetMap</a> & <a href="https://carto.com/" target="_blank" rel="noopener" className="underline hover:text-cozy-600">CARTO</a> · Rutas por <a href="https://project-osrm.org/" target="_blank" rel="noopener" className="underline hover:text-cozy-600">OSRM</a>
             </p>
           </footer>
         </main>
@@ -116,10 +110,11 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
           </p>
 
           <div className="space-y-3 mb-6 text-left">
-            <FeatureItem icon="🗺️" text="Rutas circulares únicas cada día" />
+            <FeatureItem icon="🗺️" text="Rutas circulares únicas cada día (OSRM gratis)" />
             <FeatureItem icon="🛡️" text="Evita zonas inseguras automáticamente" />
-            <FeatureItem icon="👟" text="Avatar en tiempo real con GPS" />
+            <FeatureItem icon="👟" text="Avatar en tiempo real con GPS nativo" />
             <FeatureItem icon="🌸" text="Estética acogedora y relajante" />
+            <FeatureItem icon="💰" text="100% gratis, sin tarjeta, sin API key" />
           </div>
 
           <button

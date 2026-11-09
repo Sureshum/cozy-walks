@@ -1,14 +1,14 @@
 // Contexto de autenticación con "base de datos" en localStorage
+// Simplificado: sin API key (Leaflet + OSRM son gratis)
 
 import { createContext, useContext, useReducer, useEffect, useCallback, type ReactNode } from 'react';
 import type { User, UserSettings, AuthState, AuthAction } from '../types/auth';
-import { hashPassword, verifyPassword, generateId, validateGoogleApiKey } from '../types/auth';
+import { hashPassword, verifyPassword, generateId } from '../types/auth';
 
 const STORAGE_KEY = 'cozy-walks-users';
 const SESSION_KEY = 'cozy-walks-session';
 
 const defaultSettings: UserSettings = {
-  apiKey: '',
   defaultDistance: 3,
   units: 'km',
   theme: 'cozy',
@@ -20,7 +20,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: true,
   error: null,
-  needsApiKey: false,
+  needsApiKey: false, // Ya no necesario con Leaflet
 };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
@@ -34,27 +34,12 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         isAuthenticated: true,
         user: action.payload,
         error: null,
-        needsApiKey: !action.payload.settings.apiKey || !validateGoogleApiKey(action.payload.settings.apiKey),
+        needsApiKey: false,
       };
     case 'AUTH_ERROR':
       return { ...state, isLoading: false, error: action.payload, isAuthenticated: false };
     case 'AUTH_LOGOUT':
       return { ...initialState, isLoading: false };
-    case 'SET_API_KEY':
-      if (state.user) {
-        const updatedUser = {
-          ...state.user,
-          settings: { ...state.user.settings, apiKey: action.payload },
-        };
-        return {
-          ...state,
-          user: updatedUser,
-          needsApiKey: !action.payload || !validateGoogleApiKey(action.payload),
-        };
-      }
-      return state;
-    case 'SET_NEEDS_API_KEY':
-      return { ...state, needsApiKey: action.payload };
     case 'UPDATE_SETTINGS':
       if (state.user) {
         return {
@@ -106,7 +91,6 @@ interface AuthContextValue extends AuthState {
   register: (username: string, email: string, password: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  setApiKey: (apiKey: string) => Promise<void>;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
   clearError: () => void;
 }
@@ -204,20 +188,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'AUTH_LOGOUT' });
   }, []);
 
-  const setApiKey = useCallback(async (apiKey: string): Promise<void> => {
-    if (!state.user) return;
-    
-    const users = getUsers();
-    const updatedUser = {
-      ...state.user,
-      settings: { ...state.user.settings, apiKey: apiKey.trim() },
-    };
-    users[updatedUser.id] = updatedUser;
-    saveUsers(users);
-    setSession(updatedUser.id);
-    dispatch({ type: 'SET_API_KEY', payload: apiKey.trim() });
-  }, [state.user]);
-
   const updateSettings = useCallback(async (settings: Partial<UserSettings>): Promise<void> => {
     if (!state.user) return;
     
@@ -239,7 +209,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         login,
         logout,
-        setApiKey,
         updateSettings,
         clearError,
       }}

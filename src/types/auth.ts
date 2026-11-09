@@ -1,17 +1,16 @@
-// Tipos extendidos para autenticación y API Key
+// Tipos para autenticación (simplificado - sin API key)
 
 export interface User {
   id: string;
   username: string;
   email: string;
-  passwordHash: string; // En producción: hash real con bcrypt/scrypt
+  passwordHash: string;
   createdAt: string;
   lastLogin: string;
   settings: UserSettings;
 }
 
 export interface UserSettings {
-  apiKey: string;
   defaultDistance: number;
   units: 'km' | 'mi';
   theme: 'cozy' | 'dark' | 'light';
@@ -23,7 +22,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  needsApiKey: boolean;
+  needsApiKey: boolean; // Mantenido por compatibilidad, siempre false
 }
 
 export type AuthAction =
@@ -31,11 +30,9 @@ export type AuthAction =
   | { type: 'AUTH_SUCCESS'; payload: User }
   | { type: 'AUTH_ERROR'; payload: string }
   | { type: 'AUTH_LOGOUT' }
-  | { type: 'SET_API_KEY'; payload: string }
-  | { type: 'SET_NEEDS_API_KEY'; payload: boolean }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<UserSettings> };
 
-// Utilidades simples de "hash" para demo (en producción usar crypto.subtle o backend)
+// Utilidades de hash con Web Crypto API
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + 'cozy-salt-2024');
@@ -49,12 +46,6 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return newHash === hash;
 }
 
-// Generar ID único simple
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-}
-
-// Validar formato API Key de Google
-export function validateGoogleApiKey(key: string): boolean {
-  return /^AIza[0-9A-Za-z_-]{35}$/.test(key.trim());
 }
