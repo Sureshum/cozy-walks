@@ -1,30 +1,49 @@
-// Componente raíz de la aplicación
+// Componente raíz de la aplicación con flujo de autenticación completo
 
 import { useState } from 'react';
-import MapScreen from './components/MapScreen';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { COZY_MESSAGES } from './utils/constants';
+import MapScreen from './components/MapScreen';
+import APIKeySetup from './components/APIKeySetup';
+import AuthScreen from './components/AuthScreen';
+import AsciiBackground from './components/AsciiBackground';
 import './App.css';
 
-interface AppProps {
-  apiKey: string;
-}
+// Componente interno que maneja el estado de autenticación
+function AppInner() {
+  const { isAuthenticated, isLoading, needsApiKey, user } = useAuth();
+  const [showWelcome, setShowWelcome] = useState(false);
 
-function AppContent({ apiKey }: AppProps) {
-  const [showWelcome, setShowWelcome] = useState(true);
+  // Si está cargando, mostrar loader
+  if (isLoading) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <AsciiBackground />
+        <div className="relative z-10 text-center text-white">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cozy-500 to-terracotta-500 flex items-center justify-center text-3xl shadow-lg animate-bounce-gentle">
+            🌿
+          </div>
+          <div className="w-12 h-12 mx-auto border-4 border-cozy-500/30 border-t-cozy-500 rounded-full animate-spin" />
+          <p className="mt-4 text-cozy-300">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Si no hay API key configurada, mostrar pantalla de setup
+  if (needsApiKey || !user?.settings.apiKey) {
+    return <APIKeySetup />;
+  }
+
+  // Si no está autenticado, mostrar login/registro
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+
+  // Usuario autenticado y con API key - mostrar app principal
   return (
     <div className="min-h-screen bg-cozy-50 relative overflow-hidden">
-      {/* Fondo decorativo animado */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute top-20 left-10 w-40 h-40 rounded-full bg-cozy-200/50 blur-3xl animate-float" />
-        <div className="absolute bottom-20 right-10 w-60 h-60 rounded-full bg-terracotta-200/30 blur-3xl animate-float" style={{ animationDelay: '3s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-sage-200/20 blur-3xl animate-pulse-soft" />
-      </div>
-
-      {/* Partículas flotantes */}
-      <FloatingParticles count={8} />
-
       <AppProvider>
         <main className="relative z-10 min-h-screen flex flex-col">
           {/* Header minimalista */}
@@ -52,7 +71,7 @@ function AppContent({ apiKey }: AppProps) {
           {/* Contenido principal - Mapa a pantalla completa */}
           <div className="flex-1 relative px-4 md:px-6 pb-4 md:pb-6">
             <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] min-h-[500px] max-h-[800px] rounded-3xl overflow-hidden shadow-cozy-lg">
-              <MapScreen apiKey={apiKey} />
+              <MapScreen apiKey={user.settings.apiKey} />
             </div>
           </div>
 
@@ -64,44 +83,11 @@ function AppContent({ apiKey }: AppProps) {
           </footer>
         </main>
 
-        {/* Modal de bienvenida */}
+        {/* Modal de bienvenida (solo primera vez) */}
         {showWelcome && (
           <WelcomeModal onClose={() => setShowWelcome(false)} />
         )}
       </AppProvider>
-    </div>
-  );
-}
-
-// Partículas flotantes decorativas
-function FloatingParticles({ count }: { count: number }) {
-  const particles = Array.from({ length: count }, (_, i) => ({
-    id: i,
-    left: Math.random() * 100,
-    top: Math.random() * 100,
-    size: Math.random() * 20 + 10,
-    delay: Math.random() * 6,
-    duration: Math.random() * 4 + 4,
-    emoji: ['🍃', '🌸', '🌱', '🌿', '🍂', '🌼'][Math.floor(Math.random() * 6)],
-  }));
-
-  return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute text-2xl opacity-20 animate-float"
-          style={{
-            left: `${p.left}%`,
-            top: `${p.top}%`,
-            fontSize: `${p.size}px`,
-            animationDelay: `${p.delay}s`,
-            animationDuration: `${p.duration}s`,
-          }}
-        >
-          {p.emoji}
-        </div>
-      ))}
     </div>
   );
 }
@@ -161,6 +147,11 @@ function FeatureItem({ icon, text }: { icon: string; text: string }) {
   );
 }
 
-export default function App({ apiKey }: AppProps) {
-  return <AppContent apiKey={apiKey} />;
+// App principal con providers
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  );
 }
