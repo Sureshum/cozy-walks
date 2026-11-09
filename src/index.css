@@ -1,0 +1,240 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cozy-50: #fdf8f3;
+  --color-cozy-100: #f9efe4;
+  --color-cozy-200: #f0d9c4;
+  --color-cozy-300: #e4b896;
+  --color-cozy-400: #d69068;
+  --color-cozy-500: #c8754a;
+  --color-cozy-600: #b55e3a;
+  --color-cozy-700: #944831;
+  --color-cozy-800: #763c2d;
+  --color-cozy-900: #613228;
+  --color-cozy-950: #331612;
+
+  --color-terracotta-50: #fef7f2;
+  --color-terracotta-100: #fdecd8;
+  --color-terracotta-200: #fad6b0;
+  --color-terracotta-300: #f7b47a;
+  --color-terracotta-400: #f38d46;
+  --color-terracotta-500: #ef6f22;
+  --color-terracotta-600: #e05418;
+  --color-terracotta-700: #bc3f16;
+  --color-terracotta-800: #96341a;
+  --color-terracotta-900: #792e18;
+  --color-terracotta-950: #41140b;
+
+  --color-sage-50: #f5f8f4;
+  --color-sage-100: #e6f0e8;
+  --color-sage-200: #cde1d1;
+  --color-sage-300: #a7cca2;
+  --color-sage-400: #7db078;
+  --color-sage-500: #5e8f5a;
+  --color-sage-600: #4a7247;
+  --color-sage-700: #3e5c3c;
+  --color-sage-800: #364b34;
+  --color-sage-900: #303f2e;
+  --color-sage-950: #182216;
+
+  --color-warm-50: #fefdf8;
+  --color-warm-100: #fdf8eb;
+  --color-warm-200: #faebc8;
+  --color-warm-300: #f6d890;
+  --color-warm-400: #f1be4d;
+  --color-warm-500: #eca522;
+  --color-warm-600: #d08318;
+  --color-warm-700: #a76216;
+  --color-warm-800: #874f18;
+  --color-warm-900: #6f4218;
+  --color-warm-950: #3a1f0a;
+
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+
+  --shadow-cozy: 0 4px 20px -2px rgba(148, 72, 49, 0.15), 0 2px 8px -2px rgba(148, 72, 49, 0.1);
+  --shadow-cozy-lg: 0 10px 40px -4px rgba(148, 72, 49, 0.2), 0 4px 16px -4px rgba(148, 72, 49, 0.15);
+  --shadow-cozy-xl: 0 20px 60px -8px rgba(148, 72, 49, 0.25), 0 8px 24px -8px rgba(148, 72, 49, 0.2);
+  --shadow-inner-cozy: inset 0 2px 8px rgba(148, 72, 49, 0.1);
+
+  --animate-bounce-gentle: bounceGentle 2s infinite;
+  --animate-pulse-soft: pulseSoft 3s infinite;
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+@keyframes bounceGentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
+}
+
+@layer base {
+  :root {
+    font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color-scheme: light;
+    color: #613228;
+    background-color: #fdf8f3;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    border-color: #f0d9c4;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100%;
+    background-color: #fdf8f3;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100%;
+  }
+
+  /* Scrollbar personalizada cozy */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f9efe4;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #e4b896;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #d69068;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+  .animate-slide-down {
+    animation: slideDown 0.5s ease-out forwards;
+  }
+  .animate-bounce-gentle {
+    animation: bounceGentle 2.5s ease-in-out infinite;
+  }
+  .animate-pulse-soft {
+    animation: pulseSoft 3s ease-in-out infinite;
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .shadow-cozy {
+    box-shadow: var(--shadow-cozy);
+  }
+  .shadow-cozy-lg {
+    box-shadow: var(--shadow-cozy-lg);
+  }
+  .shadow-cozy-xl {
+    box-shadow: var(--shadow-cozy-xl);
+  }
+  .filter-drop-shadow-cozy {
+    filter: drop-shadow(0 4px 12px rgba(148, 72, 49, 0.2));
+  }
+
+  .focus-visible-ring {
+    outline: none;
+  }
+  .focus-visible-ring:focus-visible {
+    outline: 2px solid #c8754a;
+    outline-offset: 2px;
+  }
+
+  .text-gradient-cozy {
+    background: linear-gradient(to right, #b55e3a, #ef6f22);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-gradient-sage {
+    background: linear-gradient(to right, #4a7247, #3e5c3c);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glass-cozy {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(4px);
+    border: 1px solid #f0d9c4;
+  }
+  .glass-cozy-strong {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid #f0d9c4;
+  }
+}
+
+/* Animaciones de entrada */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Estilos específicos para Google Maps */
+.gm-style .gm-style-iw-c {
+  border-radius: 1rem;
+  box-shadow: var(--shadow-cozy-lg);
+  border: 1px solid #f0d9c4;
+}
+
+.gm-style .gm-style-iw-tc {
+  border-radius: 1rem 1rem 0 0;
+}
+
+.gm-style .gm-style-iw-bc {
+  border-radius: 0 0 1rem 1rem;
+}
+
+/* Prevenir selección de texto en UI del mapa */
+.map-ui * {
+  user-select: none;
+}
+
+/* Reducir movimiento para accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
