@@ -1,6 +1,6 @@
 // Mapa con Leaflet + OpenStreetMap (100% gratis, sin API key, sin límites)
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -22,6 +22,7 @@ import DistanceSlider from './DistanceSlider';
 import MapControls from './MapControls';
 import RouteInfoPanel from './RouteInfoPanel';
 import ExclusionZoneLegend from './ExclusionZoneLegend';
+import Leaderboard from './Leaderboard';
 
 // Icono personalizado para el avatar
 const createAvatarIcon = (mapMode: string, heading?: number) => {
@@ -174,7 +175,7 @@ function MapComponent({
   route: RouteResult | null;
   userLocation: UserLocation | null;
   exclusionZones: ExclusionZone[];
-  mapMode: 'idle' | 'routing' | 'walking' | 'paused' | 'completed';
+  mapMode: 'idle' | 'routing' | 'walking' | 'paused' | 'completed' | 'leaderboard';
   onMapReady: (map: L.Map) => void;
 }) {
   return (
@@ -187,9 +188,9 @@ function MapComponent({
         width: '100%',
         height: '100%',
         borderRadius: 'inherit',
-        zIndex: 1, // Base layer
+        zIndex: 1,
       }}
-      whenReady={() => {}} // Usamos MapReadyHandler interno
+      whenReady={() => {}}
     >
       <MapReadyHandler onReady={onMapReady} />
       <UserLocationTracker userLocation={userLocation} mapMode={mapMode} />
@@ -295,6 +296,15 @@ function MapScreenContent() {
   const [mapZoom, setMapZoom] = useState(15);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
 
+  // Mensaje cozy estable (usa useMemo con key basada en mapMode)
+  const cozyMessage = useMemo(() => {
+    const messages = COZY_MESSAGES[mapMode as keyof typeof COZY_MESSAGES] || COZY_MESSAGES.welcome;
+    // Usar un índice determinístico basado en mapMode para que no cambie en cada render
+    const modeIndex = ['idle', 'routing', 'walking', 'paused', 'completed'].indexOf(mapMode);
+    const stableIndex = modeIndex >= 0 ? modeIndex % messages.length : 0;
+    return messages[stableIndex];
+  }, [mapMode]);
+
   // Geolocalización
   const { location: rawLocation, isSupported } = useGeolocation({
     onError: (err) => console.warn('Geolocation error:', err.message),
@@ -305,7 +315,6 @@ function MapScreenContent() {
   useEffect(() => {
     if (smoothedLocation) {
       setUserLocation(smoothedLocation);
-      // Centrar mapa en la primera ubicación
       if (mapMode === 'idle' && mapInstance) {
         setMapCenter(smoothedLocation.coordinate);
         setMapZoom(16);
@@ -321,8 +330,6 @@ function MapScreenContent() {
       
       try {
         const targetDistanceMeters = targetDistanceKm * 1000;
-
-        // Generar waypoints determinísticos para el día
         const waypoints = generateDailyWaypoints(
           center,
           targetDistanceMeters,
@@ -330,8 +337,6 @@ function MapScreenContent() {
           ROUTE_CONFIG.variance
         );
 
-        // Construir ruta usando OSRM (gratis, sin API key)
-        // OSRM: http://router.project-osrm.org/
         const coords = [center, ...waypoints, center];
         const coordString = coords.map(c => `${c.lng},${c.lat}`).join(';');
         
@@ -350,10 +355,7 @@ function MapScreenContent() {
           lng: c[0],
         }));
 
-        // Suavizar la ruta
         const smoothedPath = smoothPath(path, ROUTE_CONFIG.smoothingTension);
-
-        // Verificar y evitar zonas de exclusión
         const { crosses } = routeCrossesExclusionZones(smoothedPath, exclusionZones);
         let finalPath = smoothedPath;
 
@@ -361,7 +363,6 @@ function MapScreenContent() {
           finalPath = avoidExclusionZones(smoothedPath, exclusionZones, ROUTE_CONFIG.avoidanceMaxAttempts);
         }
 
-        // Calcular distancia total
         let totalDistance = 0;
         for (let i = 0; i < finalPath.length - 1; i++) {
           totalDistance += haversineDistance(finalPath[i], finalPath[i + 1]);
@@ -377,7 +378,6 @@ function MapScreenContent() {
         setCurrentRoute(routeResult);
         setMapMode('walking');
 
-        // Ajustar bounds del mapa
         if (mapInstance && routeResult.bounds) {
           const bounds = L.latLngBounds(
             [routeResult.bounds.south, routeResult.bounds.west],
@@ -415,9 +415,7 @@ function MapScreenContent() {
 
   const handleMapReady = useCallback((map: L.Map) => {
     setMapInstance(map);
-    // Desactivar zoom con doble click
     map.doubleClickZoom.disable();
-    // Desactivar zoom con caja
     map.boxZoom.disable();
   }, []);
 
@@ -437,11 +435,6 @@ function MapScreenContent() {
     console.log('Starting walk session:', walkSession);
     await calculateCircularRoute(userLocation.coordinate, selectedDistance);
   }, [userLocation, selectedDistance, currentRoute, calculateCircularRoute]);
-
-  const getCozyMessage = useCallback(() => {
-    const messages = COZY_MESSAGES[mapMode as keyof typeof COZY_MESSAGES] || COZY_MESSAGES.welcome;
-    return messages[Math.floor(Math.random() * messages.length)];
-  }, [mapMode]);
 
   if (!isSupported) {
     return (
@@ -465,18 +458,18 @@ function MapScreenContent() {
         route={currentRoute}
         userLocation={smoothedLocation}
         exclusionZones={exclusionZones}
-        mapMode={mapMode}
+        mapMode={['idle', 'routing', 'walking', 'paused', 'completed'].includes(mapMode) ? mapMode : 'idle'}
         onMapReady={handleMapReady}
       />
 
-      {/* Overlay de mensaje cozy - Z-INDEX ALTO */}
+      {/* Overlay mensaje cozy - ESTABLE */}
       {(mapMode === 'idle' || mapMode === 'routing') && (
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none z-40"
           aria-hidden="true"
         >
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-6 py-4 shadow-cozy text-center animate-pulse-soft max-w-xs mx-4">
-            <p className="text-cozy-700 font-medium">{getCozyMessage()}</p>
+            <p className="text-cozy-700 font-medium">{cozyMessage}</p>
             {mapMode === 'routing' && (
               <div className="mt-3 flex items-center justify-center gap-2 text-cozy-500">
                 <div className="w-5 h-5 border-2 border-cozy-300 border-t-cozy-500 rounded-full animate-spin" />
@@ -487,58 +480,132 @@ function MapScreenContent() {
         </div>
       )}
 
-      {/* UI Flotante - Slider de distancia - Z-INDEX ALTO */}
-      {mapMode === 'idle' && (
-        <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-auto md:right-8 md:w-80 z-40 pointer-events-auto animate-slide-up">
-          <DistanceSlider
-            value={selectedDistance}
-            onChange={setSelectedDistance}
-            onStartWalk={handleStartWalk}
-            disabled={!userLocation}
-          />
-        </div>
-      )}
-
-      {/* Controles del mapa - Z-INDEX ALTO */}
-      <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-auto md:right-8 md:w-80 z-40 pointer-events-auto animate-slide-up">
-        <MapControls
-          mapMode={mapMode}
-          onPause={pauseWalk}
-          onResume={resumeWalk}
-          onComplete={completeWalk}
-          onCancel={clearRoute}
-          userLocation={smoothedLocation}
-          currentRoute={currentRoute}
-        />
-      </div>
-
-      {/* Panel de info de ruta - Z-INDEX ALTO */}
-      {currentRoute && (
-        <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-auto md:right-8 md:w-80 z-40 pointer-events-auto animate-slide-up">
-          <RouteInfoPanel
-            route={currentRoute}
-            mapMode={mapMode}
-            targetDistance={selectedDistance}
-          />
-        </div>
-      )}
-
-      {/* Leyenda de zonas de exclusión - Z-INDEX MEDIO */}
-      <div className="absolute top-4 right-4 md:top-8 md:right-8 z-30 pointer-events-auto animate-fade-in">
-        <ExclusionZoneLegend zones={exclusionZones} />
-      </div>
-
-      {/* Indicador de precisión GPS - Z-INDEX ALTO */}
-      {smoothedLocation && mapMode === 'walking' && (
-        <div className="absolute bottom-24 left-4 right-4 md:left-auto md:right-4 md:bottom-32 md:w-64 pointer-events-none z-40">
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl px-3 py-2 shadow-cozy border border-cozy-200 flex items-center gap-2 animate-fade-in">
-            <div className="w-2 h-2 rounded-full bg-sage-500 animate-pulse-soft" />
-            <span className="text-xs text-cozy-600 font-medium">
-              Precisión GPS: ~{Math.round(smoothedLocation.accuracy)}m
-            </span>
+      {/* HUD Principal - LAYOUT FIJO CON GRID */}
+      <div className="absolute inset-0 pointer-events-none z-40">
+        <div className="h-full w-full flex flex-col pointer-events-auto p-4 md:p-6">
+          
+          {/* TOP BAR: Usuario + Logout + Leaderboard */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cozy-400 to-terracotta-500 flex items-center justify-center text-white text-xl shadow-cozy">
+                🌿
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="font-bold text-xl text-cozy-800">Cozy Walks</h1>
+                <p className="text-xs text-cozy-500">Tu compañero de paseos</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Botón Leaderboard */}
+              <button
+                onClick={() => setMapMode('leaderboard' as any)}
+                className="px-3 py-2 rounded-xl bg-white/90 backdrop-blur-sm border border-cozy-200 text-cozy-700 text-sm font-medium shadow-cozy hover:shadow-cozy-lg hover:bg-white transition-all duration-200 flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <span className="hidden sm:inline">Ranking</span>
+              </button>
+              
+              {/* Botón Logout */}
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('cozy-logout'))}
+                className="px-3 py-2 rounded-xl bg-white/90 backdrop-blur-sm border border-cozy-200 text-cozy-700 text-sm font-medium shadow-cozy hover:shadow-cozy-lg hover:bg-white transition-all duration-200 flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            </div>
           </div>
+
+          {/* SPACER */}
+          <div className="flex-1" />
+
+          {/* BOTTOM HUD: Slider / Controles / Panel Info / Leaderboard */}
+          <div className="space-y-3">
+            
+            {/* MODO IDLE: Slider de distancia */}
+            {mapMode === 'idle' && (
+              <div className="animate-slide-up">
+                <DistanceSlider
+                  value={selectedDistance}
+                  onChange={setSelectedDistance}
+                  onStartWalk={handleStartWalk}
+                  disabled={!userLocation}
+                />
+              </div>
+            )}
+
+            {/* MODO WALKING/PAUSED: Controles + Panel Info */}
+            {(mapMode === 'walking' || mapMode === 'paused') && (
+              <>
+                <div className="animate-slide-up">
+                  <MapControls
+                    mapMode={mapMode}
+                    onPause={pauseWalk}
+                    onResume={resumeWalk}
+                    onComplete={completeWalk}
+                    onCancel={clearRoute}
+                    userLocation={smoothedLocation}
+                    currentRoute={currentRoute}
+                  />
+                </div>
+                
+                {currentRoute && (
+                  <div className="animate-slide-up">
+                    <RouteInfoPanel
+                      route={currentRoute}
+                      mapMode={mapMode}
+                      targetDistance={selectedDistance}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* MODO COMPLETED: Panel final + Leaderboard */}
+            {mapMode === 'completed' && (
+              <>
+                {currentRoute && (
+                  <div className="animate-slide-up">
+                    <RouteInfoPanel
+                      route={currentRoute}
+                      mapMode={mapMode}
+                      targetDistance={selectedDistance}
+                    />
+                  </div>
+                )}
+                <div className="animate-slide-up">
+                  <Leaderboard />
+                </div>
+              </>
+            )}
+
+            {/* MODO LEADERBOARD */}
+            {mapMode === 'leaderboard' && (
+              <div className="animate-slide-up">
+                <Leaderboard />
+              </div>
+            )}
+          </div>
+
+          {/* Leyenda zonas exclusión - siempre visible abajo derecha en móvil */}
+          <div className="absolute bottom-4 right-4 md:static md:absolute md:bottom-auto md:right-auto md:top-4 md:right-4 pointer-events-auto animate-fade-in">
+            <ExclusionZoneLegend zones={exclusionZones} />
+          </div>
+
+          {/* Precisión GPS */}
+          {smoothedLocation && mapMode === 'walking' && (
+            <div className="absolute bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-28 md:w-64 pointer-events-none">
+              <div className="bg-white/95 backdrop-blur-sm rounded-xl px-3 py-2 shadow-cozy border border-cozy-200 flex items-center gap-2 animate-fade-in">
+                <div className="w-2 h-2 rounded-full bg-sage-500 animate-pulse-soft" />
+                <span className="text-xs text-cozy-600 font-medium">
+                  Precisión GPS: ~{Math.round(smoothedLocation.accuracy)}m
+                </span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

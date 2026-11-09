@@ -185,6 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearSession();
+    // Disparar evento personalizado para que otros componentes reaccionen
+    window.dispatchEvent(new CustomEvent('cozy-logout'));
     dispatch({ type: 'AUTH_LOGOUT' });
   }, []);
 

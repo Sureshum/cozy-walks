@@ -72,7 +72,7 @@ declare global {
   }
 }
 
-export type MapMode = 'idle' | 'routing' | 'walking' | 'paused' | 'completed';
+export type MapMode = 'idle' | 'routing' | 'walking' | 'paused' | 'completed' | 'leaderboard';
 
 export interface AppState {
   mapMode: MapMode;
