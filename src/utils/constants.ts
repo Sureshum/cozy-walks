@@ -118,7 +118,7 @@ export const EXCLUSION_ZONES = [
 
 // Configuración del avatar
 export const AVATAR_CONFIG = {
-  imageUrl: '/avatar-walker.svg', // Se creará después
+  imageUrl: `${import.meta.env.BASE_URL}avatar-walker.svg`, // Se creará después
   size: { width: 48, height: 48 },
   anchor: { x: 24, y: 48 },
   animationDuration: 300,
