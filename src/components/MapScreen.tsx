@@ -1,4 +1,4 @@
-// Mapa con Leaflet + CartoDB (gratis, sin API key)
+// Mapa con Leaflet + OpenStreetMap (100% gratis, sin API key, sin límites)
 
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -187,17 +187,18 @@ function MapComponent({
         width: '100%',
         height: '100%',
         borderRadius: 'inherit',
+        zIndex: 1, // Base layer
       }}
-      whenReady={() => {}} // whenReady vacío, usamos MapReadyHandler interno
+      whenReady={() => {}} // Usamos MapReadyHandler interno
     >
       <MapReadyHandler onReady={onMapReady} />
       <UserLocationTracker userLocation={userLocation} mapMode={mapMode} />
 
-      {/* Capa base CartoDB Positron (gratis, sin API key) */}
+      {/* Capa base OpenStreetMap (100% gratis, sin API key, sin límites) */}
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        subdomains={['a', 'b', 'c', 'd']}
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        subdomains={['a', 'b', 'c']}
         maxZoom={19}
         minZoom={12}
       />
@@ -457,7 +458,7 @@ function MapScreenContent() {
   }
 
   return (
-    <div className="relative w-full h-full rounded-3xl overflow-hidden bg-cozy-50 shadow-cozy-lg">
+    <div className="relative w-full h-full rounded-3xl overflow-hidden bg-cozy-50 shadow-cozy-lg" style={{ zIndex: 1 }}>
       <MapComponent
         center={mapCenter}
         zoom={mapZoom}
@@ -468,10 +469,10 @@ function MapScreenContent() {
         onMapReady={handleMapReady}
       />
 
-      {/* Overlay de mensaje cozy */}
+      {/* Overlay de mensaje cozy - Z-INDEX ALTO */}
       {(mapMode === 'idle' || mapMode === 'routing') && (
         <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+          className="absolute inset-0 flex items-center justify-center pointer-events-none z-40"
           aria-hidden="true"
         >
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-6 py-4 shadow-cozy text-center animate-pulse-soft max-w-xs mx-4">
@@ -486,42 +487,50 @@ function MapScreenContent() {
         </div>
       )}
 
-      {/* UI Flotante - Slider de distancia */}
+      {/* UI Flotante - Slider de distancia - Z-INDEX ALTO */}
       {mapMode === 'idle' && (
-        <DistanceSlider
-          value={selectedDistance}
-          onChange={setSelectedDistance}
-          onStartWalk={handleStartWalk}
-          disabled={!userLocation}
-        />
+        <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-auto md:right-8 md:w-80 z-40 pointer-events-auto animate-slide-up">
+          <DistanceSlider
+            value={selectedDistance}
+            onChange={setSelectedDistance}
+            onStartWalk={handleStartWalk}
+            disabled={!userLocation}
+          />
+        </div>
       )}
 
-      {/* Controles del mapa */}
-      <MapControls
-        mapMode={mapMode}
-        onPause={pauseWalk}
-        onResume={resumeWalk}
-        onComplete={completeWalk}
-        onCancel={clearRoute}
-        userLocation={smoothedLocation}
-        currentRoute={currentRoute}
-      />
-
-      {/* Panel de info de ruta */}
-      {currentRoute && (
-        <RouteInfoPanel
-          route={currentRoute}
+      {/* Controles del mapa - Z-INDEX ALTO */}
+      <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-auto md:right-8 md:w-80 z-40 pointer-events-auto animate-slide-up">
+        <MapControls
           mapMode={mapMode}
-          targetDistance={selectedDistance}
+          onPause={pauseWalk}
+          onResume={resumeWalk}
+          onComplete={completeWalk}
+          onCancel={clearRoute}
+          userLocation={smoothedLocation}
+          currentRoute={currentRoute}
         />
+      </div>
+
+      {/* Panel de info de ruta - Z-INDEX ALTO */}
+      {currentRoute && (
+        <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-auto md:right-8 md:w-80 z-40 pointer-events-auto animate-slide-up">
+          <RouteInfoPanel
+            route={currentRoute}
+            mapMode={mapMode}
+            targetDistance={selectedDistance}
+          />
+        </div>
       )}
 
-      {/* Leyenda de zonas de exclusión */}
-      <ExclusionZoneLegend zones={exclusionZones} />
+      {/* Leyenda de zonas de exclusión - Z-INDEX MEDIO */}
+      <div className="absolute top-4 right-4 md:top-8 md:right-8 z-30 pointer-events-auto animate-fade-in">
+        <ExclusionZoneLegend zones={exclusionZones} />
+      </div>
 
-      {/* Indicador de precisión GPS */}
+      {/* Indicador de precisión GPS - Z-INDEX ALTO */}
       {smoothedLocation && mapMode === 'walking' && (
-        <div className="absolute bottom-24 left-4 right-4 md:left-auto md:right-4 md:bottom-32 md:w-64 pointer-events-none z-20">
+        <div className="absolute bottom-24 left-4 right-4 md:left-auto md:right-4 md:bottom-32 md:w-64 pointer-events-none z-40">
           <div className="bg-white/95 backdrop-blur-sm rounded-xl px-3 py-2 shadow-cozy border border-cozy-200 flex items-center gap-2 animate-fade-in">
             <div className="w-2 h-2 rounded-full bg-sage-500 animate-pulse-soft" />
             <span className="text-xs text-cozy-600 font-medium">
