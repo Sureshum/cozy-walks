@@ -67,9 +67,14 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({
               <h3 className="font-semibold text-base truncate">
                 {isCompleted ? '¡Paseo completado!' : 'Tu ruta de hoy'}
               </h3>
-              <p className="text-[11px] opacity-90">
-                Objetivo: {targetDistance} km · Real: {routeKm} km
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] md:text-[11px]">
+                <span className="rounded-full bg-white/20 px-2 py-0.5 font-medium whitespace-nowrap">
+                  Objetivo {targetDistance} km
+                </span>
+                <span className="rounded-full bg-white/20 px-2 py-0.5 font-medium whitespace-nowrap">
+                  Ruta {routeKm} km
+                </span>
+              </div>
             </div>
           </div>
           <div className="text-right shrink-0">

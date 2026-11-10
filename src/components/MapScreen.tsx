@@ -138,15 +138,21 @@ const startIcon = L.divIcon({
   iconAnchor: [10, 10],
 });
 
-// Componente wrapper para manejar whenReady correctamente
-const MapReadyHandler = ({ onReady }: { onReady: (map: L.Map) => void }) => {
-  useMapEvents({
-    load: (e) => onReady(e.target),
-  });
+// Puente fiable con la instancia del mapa.
+// No usamos el evento "load" porque en react-leaflet 5 se dispara antes de
+// que los hijos se monten y la instancia se quedaba en null (por eso "Mi
+// ubicación" y el encuadre de la ruta no hacían nada).
+const MapInstanceBridge = ({ onReady }: { onReady: (map: L.Map) => void }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (map) onReady(map);
+  }, [map, onReady]);
+
   return null;
 };
 
-// Sigue al usuario cuando toca (solo si follow está activo) y avisa si el usuario mueve el mapa
+// Sigue al usuario mientras camina (sin marear) y avisa si el usuario mueve el mapa
 const MapFollowController = ({
   userLocation,
   mapMode,
@@ -166,8 +172,15 @@ const MapFollowController = ({
 
   useEffect(() => {
     if (!map || !userLocation || !follow) return;
-    if (mapMode !== 'walking') return;
-    map.panTo([userLocation.coordinate.lat, userLocation.coordinate.lng], { animate: true, duration: 0.5 });
+    if (mapMode !== 'walking' && mapMode !== 'paused') return;
+
+    const target = L.latLng(userLocation.coordinate.lat, userLocation.coordinate.lng);
+    // Zona muerta: solo recentra cuando el avatar se acerca al borde.
+    // Así el mapa no "tiembla" con cada lectura del GPS.
+    const safeArea = map.getBounds().pad(-0.2);
+    if (!safeArea.contains(target)) {
+      map.panTo(target, { animate: true, duration: 0.6 });
+    }
   }, [map, userLocation, mapMode, follow]);
 
   return null;
@@ -208,7 +221,7 @@ function MapComponent({
         zIndex: 1,
       }}
     >
-      <MapReadyHandler onReady={onMapReady} />
+      <MapInstanceBridge onReady={onMapReady} />
       <MapFollowController
         userLocation={userLocation}
         mapMode={mapMode}
@@ -383,6 +396,7 @@ function MapScreenContent() {
   const [savedTo, setSavedTo] = useState<PersistWalkResult | null>(null);
   const [isRerolling, setIsRerolling] = useState(false);
   const [followUser, setFollowUser] = useState(true);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
 
   const variantRef = useRef(0);
   const startedAtRef = useRef<Date | null>(null);
@@ -393,7 +407,7 @@ function MapScreenContent() {
   const { location: rawLocation, isSupported } = useGeolocation({
     onError: (err) => console.warn('Geolocation error:', err.message),
   });
-  const smoothedLocation = useSmoothedLocation(rawLocation);
+  const smoothedLocation = useSmoothedLocation(rawLocation, 0.5);
 
   // Actualizar ubicación en contexto y centrar la primera vez
   useEffect(() => {
@@ -589,7 +603,8 @@ function MapScreenContent() {
 
   const handleReroll = useCallback(async () => {
     if (isRerolling) return;
-    const center = currentRoute?.path[0] ?? smoothedLocation?.coordinate;
+    // Si ya estamos caminando, la nueva ruta sale desde donde estamos ahora
+    const center = smoothedLocation?.coordinate ?? currentRoute?.path[0];
     if (!center) return;
 
     setIsRerolling(true);
@@ -693,7 +708,7 @@ function MapScreenContent() {
       />
 
       {/* Barra superior */}
-      <div className="absolute top-0 inset-x-0 z-40 p-3 md:p-4 flex items-start justify-between gap-2 pointer-events-none">
+      <div className="absolute top-0 inset-x-0 z-50 p-3 md:p-4 flex items-start justify-between gap-2 pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-2 md:gap-3 rounded-2xl bg-white/90 backdrop-blur-sm border border-cozy-200 shadow-cozy px-2.5 py-2 md:px-3">
           <div className="w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-xl bg-gradient-to-br from-cozy-400 to-terracotta-500 flex items-center justify-center text-white text-lg md:text-xl shadow-cozy">
             🌿
@@ -726,8 +741,8 @@ function MapScreenContent() {
 
           <MapActionButton
             label="Ranking"
-            onClick={() => setMapMode(mapMode === 'leaderboard' ? 'idle' : 'leaderboard')}
-            active={mapMode === 'leaderboard'}
+            onClick={() => setLeaderboardOpen((open) => !open)}
+            active={leaderboardOpen}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -754,8 +769,8 @@ function MapScreenContent() {
       )}
 
       {/* Panel inferior (móvil) / panel lateral (PC) */}
-      <div className="absolute inset-x-0 bottom-0 z-40 md:inset-y-0 md:left-auto md:right-0 md:w-[380px] flex flex-col justify-end md:justify-center pointer-events-none">
-        <div className="pointer-events-auto p-3 md:p-4 md:pt-20 space-y-2.5 max-h-[72vh] md:max-h-full overflow-y-auto overscroll-contain">
+      <div className="absolute inset-x-0 bottom-0 z-30 md:top-24 md:bottom-0 md:left-auto md:right-0 md:w-[380px] flex flex-col justify-end md:justify-start pointer-events-none">
+        <div className="pointer-events-auto p-3 md:p-4 space-y-2.5 max-h-[72vh] md:max-h-full overflow-y-auto overscroll-contain">
           {mapMode === 'idle' && !smoothedLocation && (
             <div className="rounded-2xl bg-warm-50 border border-warm-200 p-3 text-xs text-warm-800 flex items-start gap-2">
               <span aria-hidden="true">📍</span>
@@ -819,13 +834,14 @@ function MapScreenContent() {
             </>
           )}
 
-          {mapMode === 'leaderboard' && (
-            <Leaderboard initialOpen onClose={() => setMapMode('idle')} />
-          )}
-
           <ExclusionZoneLegend zones={exclusionZones} />
         </div>
       </div>
+
+      {/* Ranking (modal independiente: no interrumpe el paseo en curso) */}
+      {leaderboardOpen && (
+        <Leaderboard initialOpen onClose={() => setLeaderboardOpen(false)} />
+      )}
     </div>
   );
 }

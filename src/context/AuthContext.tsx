@@ -38,7 +38,7 @@ function authReducer(s: any, a: any) {
     case 'SET_FIREBASE_USER':
       return a.payload
         ? { ...s, isLoading: false, isAuthenticated: true, user: a.payload.profile, error: null, needsApiKey: false }
-        : { ...s, isLoading: false };
+        : { ...s, isLoading: false, isAuthenticated: false, user: null };
     default:
       return s;
   }
@@ -228,14 +228,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    if (isConfigured && auth) {
-      const { signOut } = await import('firebase/auth');
-      await signOut(auth);
-    } else {
+    try {
+      if (isConfigured && auth) {
+        const { signOut } = await import('firebase/auth');
+        await signOut(auth);
+      }
+    } catch (error) {
+      // Aunque Firebase falle (sin red, token caducado...), cerramos la sesión local
+      console.warn('No se pudo cerrar sesión en Firebase:', error);
+    } finally {
       localStorage.removeItem('cozy-walks-session');
+      dispatch({ type: 'AUTH_LOGOUT' });
+      window.dispatchEvent(new CustomEvent('cozy-logout'));
     }
-    dispatch({ type: 'AUTH_LOGOUT' });
-    window.dispatchEvent(new CustomEvent('cozy-logout'));
   }, []);
 
   const updateSettings = useCallback(async (s: any) => {

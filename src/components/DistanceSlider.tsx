@@ -276,23 +276,32 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
           </div>
         </div>
 
-        {/* Etiquetas de distancia debajo del track */}
-        <div className="flex justify-between px-1 mb-4 text-xs text-cozy-500">
-          {DISTANCE_OPTIONS.map((option, index) => (
-            <span
-              key={option.value}
-              className={clsx(
-                'transition-colors duration-200',
-                option.value === value && 'text-cozy-700 font-semibold'
-              )}
-              style={{
-                position: 'relative',
-                left: index === 0 ? 0 : index === DISTANCE_OPTIONS.length - 1 ? '-100%' : '-50%',
-              }}
-            >
-              {option.label}
-            </span>
-          ))}
+        {/* Etiquetas de distancia alineadas con cada marca del track */}
+        <div className="relative h-5 mb-4 text-[11px] md:text-xs">
+          {DISTANCE_OPTIONS.map((option, index) => {
+            const optPercentage = ((option.value - min) / (max - min)) * 100;
+            const isActive = option.value === value;
+            return (
+              <span
+                key={option.value}
+                className={clsx(
+                  'absolute top-0 whitespace-nowrap transition-colors duration-200',
+                  isActive ? 'text-cozy-700 font-semibold' : 'text-cozy-500'
+                )}
+                style={{
+                  left: `${optPercentage}%`,
+                  transform:
+                    index === 0
+                      ? 'translateX(0)'
+                      : index === DISTANCE_OPTIONS.length - 1
+                        ? 'translateX(-100%)'
+                        : 'translateX(-50%)',
+                }}
+              >
+                {option.value}
+              </span>
+            );
+          })}
         </div>
 
         {/* Botón de iniciar caminata */}
