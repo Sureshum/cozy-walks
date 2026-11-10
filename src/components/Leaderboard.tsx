@@ -24,42 +24,47 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ initialOpen = false, onClose 
   const [showModal, setShowModal] = useState(initialOpen);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'firebase' | 'local'>(isUsingFirebase ? 'firebase' : 'local');
+
+  const loadLocalLeaderboard = useCallback(() => {
+    setSource('local');
+    try {
+      const data = localStorage.getItem('cozy-walks-leaderboard');
+      if (data) {
+        setEntries(JSON.parse(data));
+      }
+    } catch {
+      /* datos corruptos: se ignora */
+    }
+    setIsLoading(false);
+  }, []);
 
   const loadLeaderboard = useCallback(() => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const unsubscribe = subscribeLeaderboard(
         (entries: any[]) => {
           setEntries(entries);
+          setSource('firebase');
           setIsLoading(false);
         },
-        100
+        100,
+        () => loadLocalLeaderboard()
       );
-      
+
       return () => unsubscribe();
     } catch (err) {
       // Sin Firebase configurado es el caso esperado: se usa localStorage
       const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('Firebase no está configurado')) {
-        console.warn('Ranking en modo local (Firebase no configurado)');
-      } else {
+      if (!message.includes('Firebase no está configurado')) {
         console.error('Error loading leaderboard:', err);
         setError('No se pudo cargar el ranking');
       }
-      setIsLoading(false);
-      
-      // Fallback a localStorage
-      try {
-        const data = localStorage.getItem('cozy-walks-leaderboard');
-        if (data) {
-          setEntries(JSON.parse(data));
-        }
-      } catch {}
-      setIsLoading(false);
+      loadLocalLeaderboard();
     }
-  }, []);
+  }, [loadLocalLeaderboard]);
 
   useEffect(() => {
     const unsubscribe = loadLeaderboard();
@@ -86,7 +91,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ initialOpen = false, onClose 
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cozy-400 to-terracotta-500 flex items-center justify-center text-white text-2xl shadow-cozy">🏆</div>
                 <div>
                   <h2 className="text-2xl font-bold text-cozy-800">Leaderboard</h2>
-                  <p className="text-cozy-500 text-sm">Los caminantes más constantes {isUsingFirebase ? '🌍' : '💾'}</p>
+                  <p className="text-cozy-500 text-sm">Los caminantes más constantes {source === 'firebase' ? '🌍' : '💾'}</p>
                 </div>
               </div>
               <button onClick={closeModal} className="p-2 rounded-xl bg-white/50 hover:bg-white text-cozy-500 hover:text-cozy-700 transition-colors">

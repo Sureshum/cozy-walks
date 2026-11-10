@@ -7,7 +7,7 @@ import AsciiBackground from './AsciiBackground';
 type AuthMode = 'login' | 'register';
 
 const AuthScreen: React.FC = () => {
-  const { login, register, clearError, isLoading, error } = useAuth();
+  const { login, register, clearError, isLoading, error, isUsingFirebase } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [formData, setFormData] = useState({
     username: '',
@@ -257,8 +257,9 @@ const AuthScreen: React.FC = () => {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-white/5">
             <p className="text-center text-xs text-cozy-500">
-              Tus datos se guardan localmente en tu navegador.
-              <br />Nunca salen de tu dispositivo 🌿
+              {isUsingFirebase
+                ? <>Tus paseos se guardan en la nube para el ranking global ☁️</>
+                : <>Tus datos se guardan localmente en tu navegador.<br />Nunca salen de tu dispositivo 🌿</>}
             </p>
           </div>
         </div>

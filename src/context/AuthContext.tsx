@@ -94,13 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       unsubscribe = onAuthStateChanged(auth!, async (fu) => {
         if (fu) {
+          let profile: any = null;
           try {
             const { getUserProfile } = await import('../lib/firestore');
-            const profile = await getUserProfile(fu.uid);
-            dispatch({ type: 'SET_FIREBASE_USER', payload: { firebaseUser: fu, profile: profileFromFirebase(fu, profile) } });
-          } catch {
-            dispatch({ type: 'AUTH_ERROR', payload: 'Error cargando perfil' });
+            profile = await getUserProfile(fu.uid);
+          } catch (error) {
+            // Si Firestore aún no está listo (reglas/índices), la sesión sigue siendo válida
+            console.warn('No se pudo leer el perfil en Firestore:', error);
           }
+          dispatch({ type: 'SET_FIREBASE_USER', payload: { firebaseUser: fu, profile: profileFromFirebase(fu, profile) } });
         } else {
           dispatch({ type: 'SET_FIREBASE_USER', payload: null });
         }
@@ -141,8 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: username });
-        const { upsertUserProfile } = await import('../lib/firestore');
-        await upsertUserProfile(cred.user.uid, { username, email });
+        try {
+          const { upsertUserProfile } = await import('../lib/firestore');
+          await upsertUserProfile(cred.user.uid, { username, email });
+        } catch (error) {
+          // La cuenta ya existe en Firebase Auth; el perfil se puede crear luego
+          console.warn('No se pudo crear el perfil en Firestore:', error);
+        }
         const up = profileFromFirebase(cred.user, { username });
         dispatch({ type: 'AUTH_SUCCESS', payload: up });
         return true;

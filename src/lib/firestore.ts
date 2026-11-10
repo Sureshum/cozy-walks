@@ -164,36 +164,57 @@ export async function getUserWalks(userId: string, limitCount = 50) {
   return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
+// Normaliza y ordena el ranking en el cliente para no exigir índices compuestos
+function mapLeaderboardDocs(docs: any[], limitCount: number) {
+  return docs
+    .map((doc) => {
+      const data = doc.data();
+      return {
+        userId: doc.id,
+        username: data.username,
+        totalKm: data.stats?.totalKm || 0,
+        totalWalks: data.stats?.totalWalks || 0,
+        lastWalk: data.stats?.lastWalkDate || data.createdAt,
+        avatar: data.photoURL,
+      };
+    })
+    .filter((entry) => entry.totalKm > 0)
+    .sort((a, b) => b.totalKm - a.totalKm)
+    .slice(0, limitCount);
+}
+
 export async function getLeaderboard(limitCount = 100) {
   checkConfig();
   const usersRef = collection(db!, 'users');
-  const q = query(usersRef, where('settings.shareStats', '==', true), where('stats.totalKm', '>', 0), orderBy('stats.totalKm', 'desc'), limit(limitCount));
+  const q = query(usersRef, where('settings.shareStats', '==', true), limit(200));
   const snap = await getDocs(q);
-  return snap.docs.map(doc => {
-    const data = doc.data();
-    return { userId: doc.id, username: data.username, totalKm: data.stats?.totalKm || 0, totalWalks: data.stats?.totalWalks || 0, lastWalk: data.stats?.lastWalkDate || data.createdAt, avatar: data.photoURL };
-  });
+  return mapLeaderboardDocs(snap.docs, limitCount);
 }
 
-export function subscribeLeaderboard(callback: (entries: any[]) => void, limitCount = 50) {
+export function subscribeLeaderboard(
+  callback: (entries: any[]) => void,
+  limitCount = 50,
+  onError?: (error: unknown) => void
+) {
   checkConfig();
   const usersRef = collection(db!, 'users');
-  const q = query(usersRef, where('settings.shareStats', '==', true), where('stats.totalKm', '>', 0), orderBy('stats.totalKm', 'desc'), limit(limitCount));
+  const q = query(usersRef, where('settings.shareStats', '==', true), limit(200));
   return onSnapshot(q, (snap) => {
-    const entries = snap.docs.map(doc => {
-      const data = doc.data();
-      return { userId: doc.id, username: data.username, totalKm: data.stats?.totalKm || 0, totalWalks: data.stats?.totalWalks || 0, lastWalk: data.stats?.lastWalkDate || data.createdAt, avatar: data.photoURL };
-    });
-    callback(entries);
-  }, (error) => console.error('Error en suscripción leaderboard:', error));
+    callback(mapLeaderboardDocs(snap.docs, limitCount));
+  }, (error) => {
+    // Reglas sin publicar, sin red, etc. El componente decide el fallback.
+    console.warn('No se pudo leer el ranking global:', error);
+    onError?.(error);
+  });
 }
 
 export async function getUserRank(userId: string): Promise<number | null> {
   checkConfig();
   const usersRef = collection(db!, 'users');
-  const q = query(usersRef, where('settings.shareStats', '==', true), where('stats.totalKm', '>', 0), orderBy('stats.totalKm', 'desc'));
+  const q = query(usersRef, where('settings.shareStats', '==', true), limit(200));
   const snap = await getDocs(q);
-  const rank = snap.docs.findIndex(doc => doc.id === userId);
+  const entries = mapLeaderboardDocs(snap.docs, 200);
+  const rank = entries.findIndex((entry) => entry.userId === userId);
   return rank >= 0 ? rank + 1 : null;
 }
 

@@ -3,32 +3,98 @@
 Cozy Walks funciona **sin Firebase** usando `localStorage` (datos por dispositivo).
 Para tener **ranking y estadísticas globales** entre todos los usuarios hay que conectar un proyecto de Firebase.
 
-## 1. Crear el proyecto
+Este repositorio ya está preparado para el proyecto **`cozy-walk`**:
 
-1. Entra en <https://console.firebase.google.com/> y crea un proyecto.
-2. En **Build → Authentication → Sign-in method**, activa **Email/Password**.
-3. En **Build → Firestore Database**, crea la base de datos (modo producción).
-4. En **Project settings → General → Your apps**, añade una app **Web** (`</>`) y copia su configuración.
+- Los 6 secretos `VITE_FIREBASE_*` están creados en GitHub Actions.
+- `.firebaserc` apunta al proyecto `cozy-walk`.
+- El código usa Firestore si detecta la configuración y, si no, cae a `localStorage`.
 
-## 2. Variables de entorno en local
+## Pasos que hay que hacer una sola vez en la consola
 
-Copia `.env.example` a `.env` y rellena:
+### 1. Activar el acceso con email
+
+<https://console.firebase.google.com/project/cozy-walk/authentication/providers>
+
+- **Authentication → Sign-in method** → activa **Correo electrónico/Contraseña**.
+- Si no lo activas, el registro falla con `auth/operation-not-allowed`.
+
+### 2. Autorizar el dominio de GitHub Pages
+
+<https://console.firebase.google.com/project/cozy-walk/authentication/settings>
+
+- **Authentication → Settings → Dominios autorizados** → **Añadir dominio** → `sureshum.github.io`.
+- Sin esto el login falla con `auth/unauthorized-domain`.
+
+### 3. Publicar las reglas de seguridad
+
+<https://console.firebase.google.com/project/cozy-walk/firestore/rules>
+
+Copia el contenido de `firestore.rules` y pulsa **Publicar**:
+
+```
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /walks/{walkId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+Mientras no las publiques, Firestore rechaza todo y verás `Missing or insufficient permissions` en la consola del navegador.
+
+> Alternativa por CLI: `npm install -g firebase-tools && firebase login && firebase deploy --only firestore:rules`
+
+### 4. Índices (opcional)
+
+Las consultas del ranking y del historial **no necesitan índices compuestos**: se filtran por un solo campo y se ordenan en el cliente.
+`firestore.indexes.json` queda como referencia por si en el futuro quieres ordenar en el servidor:
+
+```bash
+firebase deploy --only firestore:indexes
+```
+
+## Variables de entorno en local
+
+`.env` (ignorado por git) ya contiene la configuración. Para otro equipo:
 
 ```env
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=tu-proyecto.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=tu-proyecto
-VITE_FIREBASE_STORAGE_BUCKET=tu-proyecto.appspot.com
+VITE_FIREBASE_STORAGE_BUCKET=tu-proyecto.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
 ```
 
-> `.env` está en `.gitignore`: nunca se sube al repositorio.
+## Secrets en GitHub (para la web publicada)
 
-## 3. Secrets en GitHub (para la web publicada)
+**Settings → Secrets and variables → Actions** (en español: **Configuración → Seguridad → Secretos y variables → Acciones**).
+Enlace directo: <https://github.com/Sureshum/cozy-walks/settings/secrets/actions>
 
-En el repositorio: **Settings → Secrets and variables → Actions → New repository secret**.
-Crea un secret por cada variable con el **mismo nombre**:
+Un secret por variable, con el mismo nombre:
 
 - `VITE_FIREBASE_API_KEY`
 - `VITE_FIREBASE_AUTH_DOMAIN`
@@ -39,37 +105,6 @@ Crea un secret por cada variable con el **mismo nombre**:
 
 El workflow `.github/workflows/deploy.yml` los inyecta en el build de GitHub Pages.
 Si no existen, la app se publica igualmente y usa `localStorage`.
-
-## 4. Publicar reglas e índices
-
-Instala la CLI y entra en tu cuenta:
-
-```bash
-npm install -g firebase-tools
-firebase login
-firebase use --add   # selecciona tu proyecto
-```
-
-Despliega las reglas de seguridad y los índices incluidos en el repo:
-
-```bash
-firebase deploy --only firestore:rules,firestore:indexes
-```
-
-- `firestore.rules`: cada usuario solo escribe su perfil (`users/{uid}`) y sus paseos (`walks/{id}`); cualquier usuario autenticado puede leer perfiles para el ranking.
-- `firestore.indexes.json`: índices compuestos para el ranking (`settings.shareStats` + `stats.totalKm`) y el historial de paseos (`userId` + `createdAt`).
-
-## 5. Emuladores (opcional, desarrollo)
-
-```bash
-firebase emulators:start --only auth,firestore
-```
-
-Y en `.env`:
-
-```env
-VITE_USE_FIREBASE_EMULATORS=true
-```
 
 ## Estructura de datos
 
