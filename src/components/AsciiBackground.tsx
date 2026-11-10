@@ -1,36 +1,52 @@
-// Fondo ASCII reactivo - caracteres que cambian color al pasar el mouse
+// Fondo ASCII reactivo - MÁS caracteres, mejor distribución, más densidad
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-const ASCII_CHARS = ['░', '▒', '▓', '█', '◆', '◇', '■', '□', '●', '○', '▲', '△', '▼', '▽', '◉', '◎', '★', '☆', '✦', '✧', '✨', '*', '+', '×', '÷', '≈', '≠', '≤', '≥', '∞', '∑', '∏', '√', '∫', '∂', '∆', '∇', '∈', '∉', '⊂', '⊃', '∪', '∩', '∀', '∃', '¬', '∧', '∨', '⊕', '⊗', '⊥', '⊤', '⟂', '∠', '∟', '⊾', '≡', '≢', '≣', '≦', '≧', '≨', '≩', '≪', '≫', '≬', '≭', '≮', '≯', '≰', '≱', '≲', '≳', '≴', '≵', '≶', '≷', '≸', '≹', '≺', '≻', '≼', '≽', '≾', '≿', '⊀', '⊁', '⊂', '⊃', '⊄', '⊅', '⊆', '⊇', '⊈', '⊉', '⊊', '⊋', '⊌', '⊍', '⊎', '⊏', '⊐', '⊑', '⊒', '⊓', '⊔', '⊕', '⊖', '⊗', '⊘', '⊙', '⊚', '⊛', '⊜', '⊝', '⊞', '⊟', '⊠', '⊡', '⊢', '⊣', '⊤', '⊥', '⊦', '⊧', '⊨', '⊩', '⊪', '⊫', '⊬', '⊭', '⊮', '⊯', '⊰', '⊱', '⊲', '⊳', '⊴', '⊵', '⊶', '⊷', '⊸', '⊹', '⊺', '⊻', '⊼', '⊽', '⊾', '⊿', '⋀', '⋁', '⋂', '⋃', '⋄', '⋅', '⋆', '⋇', '⋈', '⋉', '⋊', '⋋', '⋌', '⋍', '⋎', '⋏', '⋐', '⋑', '⋒', '⋓', '⋔', '⋕', '⋖', '⋗', '⋘', '⋙', '⋚', '⋛', '⋜', '⋝', '⋞', '⋟', '⋠', '⋡', '⋢', '⋣', '⋤', '⋥', '⋦', '⋧', '⋨', '⋩', '⋪', '⋫', '⋬', '⋭', '⋮', '⋯', '⋰', '⋱', '⋲', '⋳', '⋴', '⋵', '⋶', '⋷', '⋸', '⋹', '⋺', '⋻', '⋼', '⋽', '⋾', '⋿'];
+const ASCII_CHARS = [
+  // Caracteres decorativos
+  '░', '▒', '▓', '█', '◆', '◇', '■', '□', '●', '○', '▲', '△', '▼', '▽', '◉', '◎',
+  '★', '☆', '✦', '✧', '✨', '*', '+', '×', '÷', '≈', '≠', '≤', '≥', '∞', '∑', '∏',
+  // Símbolos técnicos
+  '√', '∫', '∂', '∆', '∇', '∈', '∉', '⊂', '⊃', '∪', '∩', '∀', '∃', '¬', '∧', '∨',
+  '⊕', '⊗', '⊥', '⊤', '⟂', '∠', '∟', '⊾', '≡', '≢', '≣', '≦', '≧', '≨', '≩',
+  // Flechas
+  '←', '→', '↑', '↓', '↔', '↕', '↖', '↗', '↘', '↙', '⇐', '⇒', '⇑', '⇓', '⇔',
+  // Geométricos
+  '◇', '◆', '□', '■', '△', '▲', '▽', '▼', '○', '●', '◎', '◉', '◆', '◇', '◈', '◆',
+  // Naturaleza / Cozy
+  '🍃', '🌿', '🌱', '🌸', '🌼', '🌻', '🍂', '🍁', '🌾', '🌲', '🌳', '🌴', '🌵', '🌿', '☘️', '🍀',
+];
 
 interface AsciiBackgroundProps {
   className?: string;
-  density?: number; // 0-1, qué tan denso es el grid
-  charSize?: number; // tamaño en px de cada carácter
+  density?: number;        // 0-1: qué tan denso (default: 0.25 - MÁS denso)
+  charSize?: number;       // tamaño base en px (default: 24 - MÁS grande)
+  speed?: number;          // velocidad animación (default: 0.8)
   colors?: {
     base: string;
     hover: string[];
     glow: string;
   };
+  mouseInfluence?: number; // radio de influencia del mouse (default: 200)
 }
 
 export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
   className = '',
-  density = 0.15,
-  charSize = 20,
+  density = 0.25,        // AUMENTADO: más caracteres
+  charSize = 24,         // AUMENTADO: caracteres más grandes
   colors = {
     base: '#3a3a3a',
-    hover: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6b9d', '#a855f7', '#06b6d4', '#f97316'],
-    glow: 'rgba(255, 107, 107, 0.3)',
+    hover: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6b9d', '#a855f7', '#06b6d4', '#f97316', '#84cc16', '#ec4899'],
+    glow: 'rgba(255, 107, 107, 0.4)',
   },
+  mouseInfluence = 200,  // AUMENTADO: más radio
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const mouseRef = useRef<{ x: number; y: number }>({ x: -1000, y: -1000 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Grid de caracteres
+  // Grid de caracteres - memoizado para rendimiento
   const gridRef = useRef<Array<{
     char: string;
     x: number;
@@ -41,21 +57,31 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
     glow: number;
     phase: number;
     speed: number;
+    scale: number;
+    rotation: number;
+    rotationSpeed: number;
   }>>([]);
 
-  // Inicializar grid
+  // Inicializar grid - memoizado
   const initGrid = useCallback((width: number, height: number) => {
-    const cols = Math.floor(width / charSize);
-    const rows = Math.floor(height / charSize);
+    const cols = Math.ceil(width / charSize);
+    const rows = Math.ceil(height / charSize);
     const newGrid = [];
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
+        // Saltar algunas celdas para distribución más natural (density)
         if (Math.random() > density) continue;
 
+        // Posición con algo de jitter para que no sea grid perfecto
+        const jitterX = (Math.random() - 0.5) * charSize * 0.6;
+        const jitterY = (Math.random() - 0.5) * charSize * 0.6;
+        
+        const x = col * charSize + charSize / 2 + jitterX;
+        const y = row * charSize + charSize / 2 + jitterY;
+        
+        // Variedad de caracteres
         const char = ASCII_CHARS[Math.floor(Math.random() * ASCII_CHARS.length)];
-        const x = col * charSize + charSize / 2;
-        const y = row * charSize + charSize / 2;
         
         newGrid.push({
           char,
@@ -66,7 +92,10 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
           targetColor: colors.base,
           glow: 0,
           phase: Math.random() * Math.PI * 2,
-          speed: 0.5 + Math.random() * 1.5,
+          speed: 0.3 + Math.random() * 1.2,        // Velocidad variada
+          scale: 0.7 + Math.random() * 0.6,        // Escala variada 0.7-1.3
+          rotation: Math.random() * Math.PI * 2,    // Rotación inicial aleatoria
+          rotationSpeed: (Math.random() - 0.5) * 0.02, // Rotación lenta
         });
       }
     }
@@ -93,27 +122,32 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
       const dx = mouseRef.current.x - cell.x;
       const dy = mouseRef.current.y - cell.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = 180; // radio de influencia del mouse
+      const maxDist = mouseInfluence;
 
       // Efecto de proximidad al mouse
       if (dist < maxDist) {
         const intensity = 1 - dist / maxDist;
-        const colorIndex = Math.floor((cell.x + cell.y + time * 100) % colors.hover.length);
+        const colorIndex = Math.floor((cell.x + cell.y + time * 50) % colors.hover.length);
         cell.targetColor = colors.hover[colorIndex];
-        cell.glow = intensity * 15;
+        cell.glow = intensity * 20;
+        // Ligera atracción hacia el mouse
+        cell.x += dx * intensity * 0.005;
+        cell.y += dy * intensity * 0.005;
       } else {
         cell.targetColor = cell.baseColor;
-        cell.glow *= 0.95;
+        cell.glow *= 0.92;
       }
 
-      // Interpolar color actual hacia target
-      // Simple interpolación para el color (aproximación)
+      // Interpolar color actual hacia target (aproximación simple)
       cell.currentColor = cell.targetColor;
 
-      // Animación de fase (respiración suave)
-      cell.phase += cell.speed * 0.01;
+      // Animaciones continuas
+      cell.phase += cell.speed * 0.008;
+      cell.rotation += cell.rotationSpeed;
+      
+      // Respiración (pulse)
       const pulse = Math.sin(cell.phase) * 0.15 + 1;
-      const size = charSize * pulse * 0.5;
+      const finalScale = cell.scale * pulse;
 
       // Dibujar glow si está activo
       if (cell.glow > 0.5) {
@@ -123,18 +157,24 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
         ctx.shadowBlur = 0;
       }
 
-      // Dibujar carácter
-      ctx.font = `${size}px monospace`;
+      // Dibujar carácter con transformaciones
+      ctx.save();
+      ctx.translate(cell.x, cell.y);
+      ctx.rotate(cell.rotation);
+      ctx.scale(finalScale, finalScale);
+      
+      ctx.font = `${charSize}px monospace`;
       ctx.fillStyle = cell.currentColor;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(cell.char, cell.x, cell.y);
+      ctx.fillText(cell.char, 0, 0);
       
+      ctx.restore();
       ctx.shadowBlur = 0;
     });
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [colors.hover, colors.glow, charSize]);
+  }, [colors.hover, colors.glow, charSize, mouseInfluence]);
 
   // Manejar resize
   useEffect(() => {
@@ -182,6 +222,18 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
     mouseRef.current = { x: -1000, y: -1000 };
   }, []);
 
+  // Touch support para móviles
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (touch) {
+      mouseRef.current = {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      };
+    }
+  }, []);
+
   return (
     <canvas
       ref={canvasRef}
@@ -198,6 +250,8 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onTouchMove={handleTouchMove}
+      onTouchStart={handleTouchMove}
       aria-hidden="true"
     />
   );
