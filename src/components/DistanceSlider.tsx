@@ -1,6 +1,6 @@
 // Slider interactivo flotante para seleccionar distancia de caminata
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { DISTANCE_OPTIONS, COZY_MESSAGES } from '../utils/constants';
 import type { DistanceOption } from '../types';
@@ -34,6 +34,12 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
   );
 
   const currentOption = closestOption(value);
+
+  // Mensaje estable: depende de la distancia elegida, no cambia en cada render
+  const welcomeMessage = useMemo(
+    () => COZY_MESSAGES.welcome[Math.round(value * 2) % COZY_MESSAGES.welcome.length],
+    [value]
+  );
 
   // Calcular posición porcentual en el slider
   const min = DISTANCE_OPTIONS[0].value;
@@ -111,8 +117,7 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
     <div
       ref={sliderRef}
       className={clsx(
-        'absolute bottom-4 left-4 right-4 md:bottom-8 md:left-auto md:right-8 md:w-80',
-        'z-30 pointer-events-auto animate-slide-up',
+        'relative w-full pointer-events-auto',
         disabled && 'opacity-50 pointer-events-none'
       )}
       role="slider"
@@ -123,30 +128,28 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
       aria-valuetext={`${value} km`}
     >
       {/* Tarjeta principal del slider */}
-      <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-cozy-lg border border-cozy-200 p-5 md:p-6">
+      <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-cozy-lg border border-cozy-200 p-4 md:p-5">
         {/* Header con icono y mensaje */}
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cozy-100 to-terracotta-100 flex items-center justify-center text-2xl">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-cozy-100 to-terracotta-100 flex items-center justify-center text-xl">
               {currentOption.icon}
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-cozy-800">Tu paseo de hoy</h3>
-              <p className="text-sm text-cozy-500">
-                {COZY_MESSAGES.welcome[Math.floor(Math.random() * COZY_MESSAGES.welcome.length)]}
-              </p>
+            <div className="min-w-0">
+              <h3 className="text-base md:text-lg font-semibold text-cozy-800">Tu paseo de hoy</h3>
+              <p className="text-xs md:text-sm text-cozy-500 truncate">{welcomeMessage}</p>
             </div>
           </div>
           {/* Indicador de valor grande */}
           <div
             className={clsx(
-              'flex-shrink-0 w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-200',
+              'flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center transition-all duration-200',
               'bg-gradient-to-br from-cozy-400 to-terracotta-500 text-white shadow-cozy',
               isDragging && 'scale-110 rotate-1'
             )}
             aria-hidden="true"
           >
-            <span className="text-2xl font-bold">{value}</span>
+            <span className="text-xl md:text-2xl font-bold">{value}</span>
             <span className="text-xs font-medium opacity-90 ml-0.5">km</span>
           </div>
         </div>

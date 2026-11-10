@@ -11,11 +11,18 @@ export interface DistanceOption {
   icon: string;
 }
 
+export interface Bounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
 export interface RouteResult {
   path: Coordinate[];
   distance: number; // en metros
   duration: number; // en segundos
-  bounds: google.maps.LatLngBoundsLiteral;
+  bounds: Bounds;
 }
 
 export interface ExclusionZone {
@@ -37,7 +44,7 @@ export interface UserLocation {
 export interface MapViewport {
   center: Coordinate;
   zoom: number;
-  bounds?: google.maps.LatLngBoundsLiteral;
+  bounds?: Bounds;
 }
 
 export interface WalkSession {
@@ -46,6 +53,7 @@ export interface WalkSession {
   endTime?: Date;
   targetDistance: number;
   actualDistance: number;
+  duration: number; // segundos caminados
   route: Coordinate[];
   completed: boolean;
 }

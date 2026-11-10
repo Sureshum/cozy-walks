@@ -20,7 +20,9 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
 
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [error, setError] = useState<GeolocationPositionError | null>(null);
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported, setIsSupported] = useState(
+    () => typeof navigator !== 'undefined' && !!navigator.geolocation
+  );
   const watchIdRef = useRef<number | null>(null);
 
   const handleSuccess = useCallback((position: GeolocationPosition) => {

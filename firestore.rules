@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para Cozy Walks
+// - Cada usuario solo puede escribir su propio perfil y sus paseos.
+// - Cualquier usuario autenticado puede leer los perfiles (necesario para el ranking).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Perfiles: users/{uid}
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    // Paseos: walks/{walkId}
+    match /walks/{walkId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Bloquear cualquier otra colección por defecto
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

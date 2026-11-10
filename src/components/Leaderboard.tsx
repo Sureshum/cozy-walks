@@ -13,10 +13,15 @@ interface LeaderboardEntry {
   avatar?: string;
 }
 
-const Leaderboard: React.FC = () => {
+interface LeaderboardProps {
+  initialOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Leaderboard: React.FC<LeaderboardProps> = ({ initialOpen = false, onClose }) => {
   const { logout, isUsingFirebase } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [showModal, setShowModal] = useState(true);
+  const [showModal, setShowModal] = useState(initialOpen);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,8 +40,14 @@ const Leaderboard: React.FC = () => {
       
       return () => unsubscribe();
     } catch (err) {
-      console.error('Error loading leaderboard:', err);
-      setError('No se pudo cargar el ranking');
+      // Sin Firebase configurado es el caso esperado: se usa localStorage
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('Firebase no está configurado')) {
+        console.warn('Ranking en modo local (Firebase no configurado)');
+      } else {
+        console.error('Error loading leaderboard:', err);
+        setError('No se pudo cargar el ranking');
+      }
       setIsLoading(false);
       
       // Fallback a localStorage
@@ -55,14 +66,12 @@ const Leaderboard: React.FC = () => {
     return () => { if (unsubscribe) unsubscribe(); };
   }, [loadLeaderboard]);
 
-  // Escuchar eventos de logout
-  useEffect(() => {
-    const handleLogout = () => { setShowModal(true); };
-    window.addEventListener('cozy-logout', handleLogout);
-    return () => window.removeEventListener('cozy-logout', handleLogout);
-  }, []);
+  const closeModal = () => {
+    setShowModal(false);
+    onClose?.();
+  };
 
-  const handleLogout = () => { logout(); setShowModal(true); };
+  const handleLogout = () => { void logout(); };
 
   const top3 = useMemo(() => entries.slice(0, 3), [entries]);
 
@@ -80,7 +89,7 @@ const Leaderboard: React.FC = () => {
                   <p className="text-cozy-500 text-sm">Los caminantes más constantes {isUsingFirebase ? '🌍' : '💾'}</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2 rounded-xl bg-white/50 hover:bg-white text-cozy-500 hover:text-cozy-700 transition-colors">
+              <button onClick={closeModal} className="p-2 rounded-xl bg-white/50 hover:bg-white text-cozy-500 hover:text-cozy-700 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -137,7 +146,7 @@ const Leaderboard: React.FC = () => {
 
           <div className="p-4 border-t border-cozy-100 flex justify-end gap-2">
             <button onClick={handleLogout} className="px-4 py-2 rounded-xl bg-white/90 backdrop-blur-sm border border-cozy-200 text-cozy-700 font-medium shadow-cozy hover:bg-cozy-50 transition-colors">Cerrar sesión</button>
-            <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl bg-gradient-to-r from-cozy-500 to-terracotta-500 text-white font-medium shadow-cozy hover:shadow-cozy-lg transition-all">Continuar</button>
+            <button onClick={closeModal} className="px-4 py-2 rounded-xl bg-gradient-to-r from-cozy-500 to-terracotta-500 text-white font-medium shadow-cozy hover:shadow-cozy-lg transition-all">Continuar</button>
           </div>
         </div>
       </div>

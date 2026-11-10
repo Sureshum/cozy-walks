@@ -1,6 +1,6 @@
 // Utilidades para cálculo de rutas, zonas de exclusión y aleatoriedad
 
-import type { Coordinate, ExclusionZone } from '../types';
+import type { Coordinate, ExclusionZone, Bounds } from '../types';
 
 /**
  * Calcula la distancia entre dos coordenadas usando la fórmula de Haversine
@@ -219,13 +219,17 @@ export function generateDailyWaypoints(
   targetDistance: number,
   numWaypoints: number = 4,
   variance: number = 0.3,
-  date: Date = new Date()
+  date: Date = new Date(),
+  variant: number = 0,
+  radiusScale: number = 1
 ): Coordinate[] {
-  const seed = getDailySeed(date) + Math.round(targetDistance / 1000);
+  const seed = getDailySeed(date) + Math.round(targetDistance / 1000) + variant * 7919;
   const random = createSeededRandom(seed);
 
   const waypoints: Coordinate[] = [];
-  const radius = targetDistance / (2 * Math.PI * numWaypoints);
+  // Radio del bucle: el perímetro de un círculo de radio r es 2πr.
+  // Se ajusta con radiusScale para acercarse a la distancia objetivo.
+  const radius = (targetDistance / (2 * Math.PI)) * radiusScale;
 
   for (let i = 0; i < numWaypoints; i++) {
     const baseAngle = (i / numWaypoints) * 360;
@@ -240,21 +244,26 @@ export function generateDailyWaypoints(
 }
 
 /**
- * Intenta ajustar una ruta para evitar zonas de exclusión
+ * Intenta ajustar una ruta para evitar zonas de exclusión.
+ * Acotado para evitar crecimientos exponenciales del número de puntos.
  */
 export function avoidExclusionZones(
   path: Coordinate[],
   exclusionZones: ExclusionZone[],
-  maxAttempts: number = 10
+  maxAttempts: number = 3
 ): Coordinate[] {
+  const MAX_POINTS = 4000;
   let adjustedPath = [...path];
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (adjustedPath.length > MAX_POINTS) break;
+
     const { crosses, zones } = routeCrossesExclusionZones(adjustedPath, exclusionZones);
     if (!crosses) break;
 
-    // Para cada zona cruzada, intentar desviar el camino
     for (const zone of zones) {
+      // Si el paseo empieza dentro de la zona, no se puede "evitar": se deja pasar
+      if (path[0] && isPointInPolygon(path[0], zone.coordinates)) continue;
       adjustedPath = detourAroundZone(adjustedPath, zone);
     }
   }
@@ -263,28 +272,52 @@ export function avoidExclusionZones(
 }
 
 /**
- * Desvía una ruta alrededor de una zona de exclusión
+ * Desvía una ruta alrededor de una zona de exclusión.
+ * Solo inserta un arco de puntos por cada bloque contiguo que cruza la zona.
  */
 function detourAroundZone(path: Coordinate[], zone: ExclusionZone): Coordinate[] {
-  // Encuentra los puntos de entrada y salida de la zona
+  if (path.length < 2) return path;
+
+  const centroid = getPolygonCentroid(zone.coordinates);
+  const safetyBuffer = 100; // metros
+  const maxRadius = zone.coordinates.reduce(
+    (max, vertex) => Math.max(max, haversineDistance(centroid, vertex)),
+    0
+  );
+  const radius = maxRadius + safetyBuffer;
+
   const newPath: Coordinate[] = [];
+  let alreadyDetoured = false;
 
   for (let i = 0; i < path.length - 1; i++) {
     newPath.push(path[i]);
 
-    const crosses = doesLineIntersectPolygon(path[i], path[i + 1], zone.coordinates);
-    if (crosses) {
-      // Añadir puntos alrededor de la zona (simplificado: añadir vértices de la zona con offset)
-      const centroid = getPolygonCentroid(zone.coordinates);
-      const offset = 100; // metros de seguridad
+    if (alreadyDetoured) continue;
+    if (!doesLineIntersectPolygon(path[i], path[i + 1], zone.coordinates)) continue;
 
-      // Añadir puntos de desvío
-      for (const vertex of zone.coordinates) {
-        const bearing = calculateBearing(centroid, vertex);
-        const detourPoint = destinationPoint(vertex, offset, bearing + 90);
-        newPath.push(detourPoint);
-      }
+    // Buscar el final del bloque que cruza la zona
+    let exitIndex = i + 1;
+    while (
+      exitIndex < path.length - 1 &&
+      doesLineIntersectPolygon(path[exitIndex], path[exitIndex + 1], zone.coordinates)
+    ) {
+      exitIndex += 1;
     }
+
+    // Arco de puntos fuera de la zona, en el sentido angular más corto
+    const entryBearing = calculateBearing(centroid, path[i]);
+    const exitBearing = calculateBearing(centroid, path[exitIndex]);
+    const delta = ((exitBearing - entryBearing + 540) % 360) - 180;
+    const steps = 8;
+
+    for (let step = 1; step <= steps; step++) {
+      const bearing = entryBearing + (delta * step) / (steps + 1);
+      newPath.push(destinationPoint(centroid, radius, bearing));
+    }
+
+    // Saltar los puntos originales que quedan dentro de la zona
+    i = exitIndex - 1;
+    alreadyDetoured = true;
   }
 
   newPath.push(path[path.length - 1]);
@@ -307,7 +340,7 @@ function getPolygonCentroid(polygon: Coordinate[]): Coordinate {
 /**
  * Calcula los bounds de un array de coordenadas
  */
-export function calculateBounds(coordinates: Coordinate[]): google.maps.LatLngBoundsLiteral {
+export function calculateBounds(coordinates: Coordinate[]): Bounds {
   if (coordinates.length === 0) {
     return { north: 0, south: 0, east: 0, west: 0 };
   }

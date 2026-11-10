@@ -129,7 +129,7 @@ export const ROUTE_CONFIG = {
   defaultWaypoints: 4,
   variance: 0.3,
   smoothingTension: 0.5,
-  avoidanceMaxAttempts: 10,
+  avoidanceMaxAttempts: 3,
   safetyBuffer: 100, // metros
   strokeColor: '#c8754a',
   strokeOpacity: 0.8,
