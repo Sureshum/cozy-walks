@@ -28,6 +28,8 @@ function authReducer(s: any, a: any) {
     case 'AUTH_SUCCESS':
       return { ...s, isLoading: false, isAuthenticated: true, user: a.payload, error: null, needsApiKey: false };
     case 'AUTH_ERROR':
+      // Si el error no cambia, devolver el mismo estado (evita re-renders globales)
+      if (s.error === a.payload && !s.isLoading) return s;
       return { ...s, isLoading: false, error: a.payload, isAuthenticated: false };
     case 'AUTH_LOGOUT':
       return { user: null, isAuthenticated: false, isLoading: false, error: null, needsApiKey: false };
@@ -134,7 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [isFirebaseReady, state.isLoading]);
 
-  const clearError = useCallback(() => dispatch({ type: 'AUTH_ERROR', payload: '' }), []);
+  const clearError = useCallback(() => {
+    // Solo si hay un error visible: no re-renderizar todo el árbol en cada tecla
+    if (state.error) dispatch({ type: 'AUTH_ERROR', payload: '' });
+  }, [state.error]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     dispatch({ type: 'AUTH_START' });

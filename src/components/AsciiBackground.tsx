@@ -1,6 +1,6 @@
 // Fondo ASCII reactivo - MÁS caracteres, mejor distribución, más densidad
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { memo, useEffect, useRef, useState, useCallback } from 'react';
 
 const ASCII_CHARS = [
   // Caracteres decorativos
@@ -30,19 +30,24 @@ interface AsciiBackgroundProps {
   mouseInfluence?: number; // radio de influencia del mouse (default: 200)
 }
 
-export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
+// Paleta por defecto estable (identidad constante: evita reiniciar la animación)
+const DEFAULT_COLORS = {
+  base: '#3a3a3a',
+  hover: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6b9d', '#a855f7', '#06b6d4', '#f97316', '#84cc16', '#ec4899'],
+  glow: 'rgba(255, 107, 107, 0.4)',
+};
+
+export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
   className = '',
   density = 0.25,        // AUMENTADO: más caracteres
   charSize = 24,         // AUMENTADO: caracteres más grandes
-  colors = {
-    base: '#3a3a3a',
-    hover: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6b9d', '#a855f7', '#06b6d4', '#f97316', '#84cc16', '#ec4899'],
-    glow: 'rgba(255, 107, 107, 0.4)',
-  },
+  colors = DEFAULT_COLORS,
   mouseInfluence = 200,  // AUMENTADO: más radio
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
+  const lastFrameRef = useRef(0);
+  const pausedRef = useRef(false);
   const mouseRef = useRef<{ x: number; y: number }>({ x: -1000, y: -1000 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -103,19 +108,41 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
   }, [charSize, density, colors.base]);
 
   // Animación principal
-  const animate = useCallback(() => {
+  const animate = useCallback((timeMs?: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const now = typeof timeMs === 'number' ? timeMs : performance.now();
+
+    // Pausado mientras se escribe en un campo: el teclado móvil + blur del panel
+    // hacen caro repintar el canvas, y así el texto va fluido.
+    if (pausedRef.current) {
+      animationRef.current = requestAnimationFrame(animate);
+      return;
+    }
+
+    // Limitar a ~30 fps: el fondo es decorativo y así no compite con la UI
+    if (now - lastFrameRef.current < 32) {
+      animationRef.current = requestAnimationFrame(animate);
+      return;
+    }
+    lastFrameRef.current = now;
+
     const { width, height } = canvas;
-    const time = Date.now() * 0.001;
+    const time = now * 0.001;
 
     // Limpiar con fondo negro
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
+
+    // Configuración de texto fuera del bucle (no cambia por carácter)
+    ctx.font = `${charSize}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 0;
 
     // Actualizar y dibujar cada carácter
     gridRef.current.forEach((cell) => {
@@ -144,17 +171,15 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
       // Animaciones continuas
       cell.phase += cell.speed * 0.008;
       cell.rotation += cell.rotationSpeed;
-      
+
       // Respiración (pulse)
       const pulse = Math.sin(cell.phase) * 0.15 + 1;
       const finalScale = cell.scale * pulse;
 
-      // Dibujar glow si está activo
+      // Dibujar glow si está activo (shadowBlur es caro: solo cuando hace falta)
       if (cell.glow > 0.5) {
         ctx.shadowColor = colors.glow;
         ctx.shadowBlur = cell.glow;
-      } else {
-        ctx.shadowBlur = 0;
       }
 
       // Dibujar carácter con transformaciones
@@ -162,48 +187,81 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
       ctx.translate(cell.x, cell.y);
       ctx.rotate(cell.rotation);
       ctx.scale(finalScale, finalScale);
-      
-      ctx.font = `${charSize}px monospace`;
       ctx.fillStyle = cell.currentColor;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText(cell.char, 0, 0);
-      
       ctx.restore();
-      ctx.shadowBlur = 0;
+
+      if (cell.glow > 0.5) ctx.shadowBlur = 0;
     });
 
     animationRef.current = requestAnimationFrame(animate);
   }, [colors.hover, colors.glow, charSize, mouseInfluence]);
 
-  // Manejar resize
+  // Pausar el repintado mientras el usuario escribe (teclado móvil abierto)
+  useEffect(() => {
+    const isEditable = (el: Element | null) =>
+      !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || (el as HTMLElement).isContentEditable);
+
+    const onFocusIn = (e: FocusEvent) => {
+      if (isEditable(e.target as Element)) pausedRef.current = true;
+    };
+    const onFocusOut = () => {
+      pausedRef.current = false;
+      lastFrameRef.current = 0;
+    };
+
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
+
+  // Manejar resize (con debounce: el teclado móvil dispara muchos eventos)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const resize = () => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const applySize = () => {
       const rect = canvas.parentElement?.getBoundingClientRect();
-      if (rect) {
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        setDimensions({ width: rect.width, height: rect.height });
-        initGrid(rect.width, rect.height);
-      }
+      if (!rect) return;
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      if (width === 0 || height === 0) return;
+      if (canvas.width === width && canvas.height === height) return;
+
+      canvas.width = width;
+      canvas.height = height;
+      setDimensions({ width, height });
+      initGrid(width, height);
     };
 
-    resize();
+    const resize = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(applySize, 150);
+    };
+
+    applySize();
     window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('resize', resize);
+    };
   }, [initGrid]);
 
   // Iniciar animación cuando tenemos dimensiones
   useEffect(() => {
     if (dimensions.width > 0 && dimensions.height > 0) {
-      animate();
+      lastFrameRef.current = 0;
+      animationRef.current = requestAnimationFrame(animate);
     }
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, [dimensions, animate]);
@@ -256,5 +314,8 @@ export const AsciiBackground: React.FC<AsciiBackgroundProps> = ({
     />
   );
 };
+
+// memo: el formulario se re-renderiza con cada tecla y no queremos reiniciar el canvas
+export const AsciiBackground = memo(AsciiBackgroundBase);
 
 export default AsciiBackground;
