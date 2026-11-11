@@ -132,7 +132,7 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
         {/* Header con icono y mensaje */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-cozy-100 to-terracotta-100 flex items-center justify-center text-xl">
+            <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-cozy-100 to-terracotta-100 flex items-center justify-center text-xl font-mono">
               {currentOption.icon}
             </div>
             <div className="min-w-0">
@@ -318,7 +318,7 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
           )}
           aria-label="Iniciar caminata"
         >
-          <span className="text-2xl">👟</span>
+          <span className="text-2xl font-mono">{'>'}</span>
           <span>Iniciar caminata de {value} km</span>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -328,20 +328,20 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
         {/* Tips cozy */}
         <div className="mt-4 pt-4 border-t border-cozy-100">
           <p className="text-xs text-cozy-500 text-center">
-            💡 La ruta cambia cada día. ¡Explora nuevos caminos!
+            * La ruta cambia cada dia. Explora nuevos caminos!
           </p>
         </div>
       </div>
 
-      {/* Decoraciones flotantes */}
-      <div className="absolute -top-3 -right-3 w-8 h-8 opacity-30 animate-float" aria-hidden="true">
-        🌸
+      {/* Decoraciones flotantes - ASCII */}
+      <div className="absolute -top-3 -right-3 w-8 h-8 opacity-30 animate-float font-mono" aria-hidden="true">
+        @
       </div>
-      <div className="absolute -top-2 left-2 w-6 h-6 opacity-20 animate-float" style={{ animationDelay: '2s' }} aria-hidden="true">
-        🍃
+      <div className="absolute -top-2 left-2 w-6 h-6 opacity-20 animate-float font-mono" style={{ animationDelay: '2s' }} aria-hidden="true">
+        *
       </div>
-      <div className="absolute bottom-2 -right-2 w-6 h-6 opacity-20 animate-float" style={{ animationDelay: '4s' }} aria-hidden="true">
-        🌿
+      <div className="absolute bottom-2 -right-2 w-6 h-6 opacity-20 animate-float font-mono" style={{ animationDelay: '4s' }} aria-hidden="true">
+        +
       </div>
     </div>
   );

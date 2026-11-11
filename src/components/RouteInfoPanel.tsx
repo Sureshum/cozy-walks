@@ -52,7 +52,7 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({
     <div
       className="rounded-3xl bg-white/95 backdrop-blur-sm shadow-cozy-lg border border-cozy-200 overflow-hidden"
       role="region"
-      aria-label="Información de la ruta"
+      aria-label="Informacion de la ruta"
     >
       {/* Header */}
       <div className={clsx('bg-gradient-to-r from-cozy-500 to-terracotta-500 text-white relative overflow-hidden', isWalking ? 'p-3' : 'p-4')}>
@@ -94,7 +94,7 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({
               : 'bg-warm-50 border border-warm-200 text-warm-700'
           )}
         >
-          <span className="text-base" aria-hidden="true">{isClose ? '✨' : '🎯'}</span>
+          <span className="text-base font-mono" aria-hidden="true">{isClose ? '+' : '*'}</span>
           <span className="font-medium">
             {isClose
               ? 'Distancia casi perfecta'
@@ -106,34 +106,34 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({
         {isWalking ? (
           <div className="hidden md:flex items-center justify-between gap-2 text-[11px] text-cozy-600">
             <span className="flex items-center gap-1">
-              <span aria-hidden="true">⏱️</span> {formatDuration(route.duration)}
+              <span aria-hidden="true" className="font-mono">@</span> {formatDuration(route.duration)}
             </span>
             <span className="flex items-center gap-1">
-              <span aria-hidden="true">👟</span> {pace}
+              <span aria-hidden="true" className="font-mono">{'>'}</span> {pace}
             </span>
             <span className="flex items-center gap-1">
-              <span aria-hidden="true">📍</span> {route.path.length} pts
+              <span aria-hidden="true" className="font-mono">#</span> {route.path.length} pts
             </span>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <StatCard icon="⏱️" label="Tiempo ruta" value={formatDuration(route.duration)} />
-            <StatCard icon="👟" label="Ritmo medio" value={pace} />
-            <StatCard icon="📍" label="Puntos" value={route.path.length} />
-            <StatCard icon="🔄" label="Tipo" value="Circular" />
+            <StatCard icon="@" label="Tiempo ruta" value={formatDuration(route.duration)} />
+            <StatCard icon=">" label="Ritmo medio" value={pace} />
+            <StatCard icon="#" label="Puntos" value={route.path.length} />
+            <StatCard icon="~" label="Tipo" value="Circular" />
           </div>
         )}
 
         {isCompleted && (
           <div className="rounded-2xl p-3 bg-gradient-to-r from-sage-50 to-cozy-50 border border-sage-200 text-center">
-            <div className="text-2xl mb-1">🎉</div>
+            <div className="text-2xl mb-1 font-mono">+</div>
             <p className="text-sm font-semibold text-sage-800">¡Buen trabajo!</p>
             <p className="text-xs text-sage-600 mt-0.5">
               {walkedKm.toFixed(1)} km en {formatDuration(elapsedSeconds)}.
             </p>
             {savedTo && (
               <p className="text-[10px] text-sage-500 mt-1">
-                {savedTo === 'firebase' ? 'Guardado en la nube ☁️' : 'Guardado en este dispositivo 💾'}
+                {savedTo === 'firebase' ? 'Guardado en la nube' : 'Guardado en este dispositivo'}
               </p>
             )}
           </div>
@@ -151,7 +151,7 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ icon, label, value }) => (
   <div className="rounded-xl p-2.5 border bg-cozy-50 border-cozy-200 text-cozy-700 text-center">
-    <div className="text-lg mb-0.5" aria-hidden="true">{icon}</div>
+    <div className="text-lg mb-0.5 font-mono" aria-hidden="true">{icon}</div>
     <div className="text-sm font-bold">{value}</div>
     <div className="text-[10px] opacity-70">{label}</div>
   </div>

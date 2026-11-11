@@ -52,14 +52,14 @@ const CozyLoader: React.FC<CozyLoaderProps> = ({
             sizeClasses[size]
           )}
         />
-        {/* Icono central */}
+        {/* Icono central - ASCII */}
         <div
           className={clsx(
-            'absolute inset-0 flex items-center justify-center text-2xl md:text-3xl lg:text-4xl animate-bounce-gentle',
+            'absolute inset-0 flex items-center justify-center text-2xl md:text-3xl lg:text-4xl animate-bounce-gentle font-mono',
             sizeClasses[size]
           )}
         >
-          🌿
+          (
         </div>
       </div>
 
@@ -72,11 +72,11 @@ const CozyLoader: React.FC<CozyLoaderProps> = ({
         </p>
       </div>
 
-      {/* Decoraciones */}
+      {/* Decoraciones - ASCII */}
       <div className="flex gap-2 mt-2" aria-hidden="true">
-        <span className="text-lg animate-float" style={{ animationDelay: '0s' }}>🍃</span>
-        <span className="text-lg animate-float" style={{ animationDelay: '0.5s' }}>🌸</span>
-        <span className="text-lg animate-float" style={{ animationDelay: '1s' }}>🌱</span>
+        <span className="text-lg animate-float font-mono" style={{ animationDelay: '0s' }}>*</span>
+        <span className="text-lg animate-float font-mono" style={{ animationDelay: '0.5s' }}>@</span>
+        <span className="text-lg animate-float font-mono" style={{ animationDelay: '1s' }}>+</span>
       </div>
     </div>
   );

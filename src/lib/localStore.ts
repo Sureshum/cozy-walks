@@ -63,6 +63,17 @@ export function getLocalLeaderboard(): LocalLeaderboardEntry[] {
     .sort((a, b) => b.totalKm - a.totalKm);
 }
 
+// Elimina a un usuario del ranking local y borra sus paseos guardados
+export function deleteLocalLeaderboardEntry(userId: string): void {
+  const leaderboard = readJson<LocalLeaderboardEntry[]>(LEADERBOARD_KEY, [])
+    .filter((entry) => entry.userId !== userId);
+  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+
+  const walks = readJson<LocalWalk[]>(WALKS_KEY, [])
+    .filter((walk) => walk.userId !== userId);
+  localStorage.setItem(WALKS_KEY, JSON.stringify(walks));
+}
+
 export function getLocalStats(userId: string): LocalStats {
   const walks = getLocalWalks(userId).filter((w) => w.completed);
   return {

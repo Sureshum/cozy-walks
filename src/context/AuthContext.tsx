@@ -3,7 +3,12 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 import { hashPassword, verifyPassword, generateId } from '../types/auth';
+import { checkUsername } from '../utils/profanity';
 import { auth, isConfigured } from '../lib/firebase';
+
+// Cache para evitar re-verificar admin en cada render
+const adminCache = new Map<string, { isAdmin: boolean; timestamp: number }>();
+const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 const DEFAULT_SETTINGS = {
   defaultDistance: 3,
@@ -71,6 +76,40 @@ function profileFromFirebase(fu: any, profile?: any) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Comprobar el rol de administrador en segundo plano (no frena el login)
+  useEffect(() => {
+    const user = state.user;
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    // Verificar cache primero
+    const cacheKey = `${user.id}:${user.email}`;
+    const cached = adminCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < ADMIN_CACHE_TTL) {
+      setIsAdmin(cached.isAdmin);
+      return;
+    }
+
+    let alive = true;
+    import('../lib/firestore')
+      .then(({ isAdminUser }) => isAdminUser(user.id, user.email))
+      .then((value) => {
+        if (alive) {
+          adminCache.set(cacheKey, { isAdmin: value, timestamp: Date.now() });
+          setIsAdmin(value);
+        }
+      })
+      .catch(() => {
+        if (alive) setIsAdmin(false);
+      });
+
+    return () => { alive = false; };
+  }, [state.user?.id, state.user?.email]);
 
   // Firebase listener + fallback a sesión local
   useEffect(() => {
@@ -95,20 +134,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
 
       unsubscribe = onAuthStateChanged(auth!, async (fu) => {
-        if (fu) {
-          let profile: any = null;
-          try {
-            const { getUserProfile } = await import('../lib/firestore');
-            profile = await getUserProfile(fu.uid);
-          } catch (error) {
-            // Si Firestore aún no está listo (reglas/índices), la sesión sigue siendo válida
-            console.warn('No se pudo leer el perfil en Firestore:', error);
-          }
-          dispatch({ type: 'SET_FIREBASE_USER', payload: { firebaseUser: fu, profile: profileFromFirebase(fu, profile) } });
-        } else {
+        if (!fu) {
           dispatch({ type: 'SET_FIREBASE_USER', payload: null });
+          setIsFirebaseReady(true);
+          return;
         }
+
+        // Entrar al instante con lo que ya sabe Firebase Auth.
+        // El perfil de Firestore se carga después, sin bloquear el login.
+        dispatch({ type: 'SET_FIREBASE_USER', payload: { firebaseUser: fu, profile: profileFromFirebase(fu) } });
         setIsFirebaseReady(true);
+
+        try {
+          const { getUserProfile } = await import('../lib/firestore');
+          const profile = await getUserProfile(fu.uid);
+          if (!cancelled && auth?.currentUser?.uid === fu.uid && profile) {
+            dispatch({ type: 'SET_FIREBASE_USER', payload: { firebaseUser: fu, profile: profileFromFirebase(fu, profile) } });
+          }
+        } catch (error) {
+          // Si Firestore aún no está listo (reglas/índices), la sesión sigue siendo válida
+          console.warn('No se pudo leer el perfil en Firestore:', error);
+        }
       });
     })();
 
@@ -142,21 +188,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.error]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
+    // Nombre limpio: longitud, caracteres permitidos y sin obscenidades
+    const usernameCheck = checkUsername(username);
+    if (!usernameCheck.ok) {
+      dispatch({ type: 'AUTH_ERROR', payload: usernameCheck.reason || 'Nombre de usuario no válido' });
+      return false;
+    }
+
     dispatch({ type: 'AUTH_START' });
+    
+    // Timeout para evitar bloqueo indefinido
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout de autenticación')), 10000);
+    });
+
     try {
       if (isConfigured && auth) {
         const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(cred.user, { displayName: username });
-        try {
-          const { upsertUserProfile } = await import('../lib/firestore');
-          await upsertUserProfile(cred.user.uid, { username, email });
-        } catch (error) {
-          // La cuenta ya existe en Firebase Auth; el perfil se puede crear luego
-          console.warn('No se pudo crear el perfil en Firestore:', error);
-        }
-        const up = profileFromFirebase(cred.user, { username });
-        dispatch({ type: 'AUTH_SUCCESS', payload: up });
+        await Promise.race([
+          (async () => {
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(cred.user, { displayName: username });
+            try {
+              const { upsertUserProfile } = await import('../lib/firestore');
+              await upsertUserProfile(cred.user.uid, { username, email });
+            } catch (error) {
+              // La cuenta ya existe en Firebase Auth; el perfil se puede crear luego
+              console.warn('No se pudo crear el perfil en Firestore:', error);
+            }
+            const up = profileFromFirebase(cred.user, { username });
+            dispatch({ type: 'AUTH_SUCCESS', payload: up });
+            return true;
+          })(),
+          timeoutPromise
+        ]);
         return true;
       }
 
@@ -195,10 +260,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     dispatch({ type: 'AUTH_START' });
+    
+    // Timeout para evitar bloqueo indefinido
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout de autenticación')), 10000);
+    });
+
     try {
       if (isConfigured && auth) {
         const { signInWithEmailAndPassword } = await import('firebase/auth');
-        await signInWithEmailAndPassword(auth, email, password);
+        await Promise.race([
+          signInWithEmailAndPassword(auth, email, password),
+          timeoutPromise
+        ]);
         return true;
       }
 
@@ -226,7 +300,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? 'Email inválido'
           : e.code === 'auth/too-many-requests'
             ? 'Demasiados intentos. Intenta más tarde.'
-            : 'Error al iniciar sesión';
+            : e.message === 'Timeout de autenticación'
+              ? 'La autenticación tardó demasiado. Verifica tu conexión e inténtalo de nuevo.'
+              : 'Error al iniciar sesión';
       dispatch({ type: 'AUTH_ERROR', payload: m });
       return false;
     }
@@ -276,6 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateSettings,
     clearError,
+    isAdmin,
     isUsingFirebase: isConfigured && !!auth,
   };
 

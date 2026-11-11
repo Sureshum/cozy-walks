@@ -29,39 +29,9 @@ Este repositorio ya está preparado para el proyecto **`cozy-walk`**:
 
 <https://console.firebase.google.com/project/cozy-walk/firestore/rules>
 
-Copia el contenido de `firestore.rules` y pulsa **Publicar**:
-
-```
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
-    match /users/{uid} {
-      allow read: if signedIn();
-      allow create, update: if isOwner(uid);
-      allow delete: if isOwner(uid);
-    }
-
-    match /walks/{walkId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-```
+Copia **todo** el contenido de `firestore.rules` (incluye ya las reglas de
+administrador) y pulsa **Publicar**. El archivo es la única fuente de verdad:
+si cambia, vuelve a copiarlo aquí.
 
 Mientras no las publiques, Firestore rechaza todo y verás `Missing or insufficient permissions` en la consola del navegador.
 
@@ -127,3 +97,44 @@ walks/{walkId}
 - Si Firebase está configurado **y** hay sesión de Firebase → los paseos se guardan en Firestore.
 - En cualquier otro caso → se guardan en `localStorage` (`cozy-walks-walks`, `cozy-walks-leaderboard`).
 - El ranking muestra 🌍 cuando usa Firestore y 💾 cuando usa datos locales.
+
+## Administrar el ranking (borrar carreras)
+
+El botón **Admin** aparece dentro del ranking solo para administradores. Desde ahí
+puedes borrar las carreras de un caminante y sacarlo del ranking. La operación:
+
+1. Borra todos los documentos de `walks` de ese usuario.
+2. Pone sus estadísticas a cero y `settings.shareStats: false` en `users/{uid}`.
+
+Para ser administrador hay dos caminos:
+
+### Opción A (recomendada): documento `admins/{uid}`
+
+1. Entra en la app con tu cuenta y abre la consola del navegador. Copia tu UID con:
+
+   ```js
+   // En la consola del navegador, con la app abierta y sesión iniciada
+   await window.firebase?.auth?.().currentUser?.uid
+   ```
+
+   Si no está expuesto, míralo en **Authentication → Users** de Firebase.
+
+2. En Firestore, crea la colección **`admins`** y un documento cuyo **ID sea tu UID**
+   (el contenido da igual, por ejemplo `{ "note": "owner" }`).
+3. Publica las reglas actualizadas de `firestore.rules` (paso 3 de arriba).
+
+Con eso ya puedes entrar al ranking y ver el botón **Admin**.
+
+### Opción B: variable `VITE_ADMIN_EMAILS`
+
+En GitHub: **Settings → Secrets and variables → Actions → Variables** y crea
+`VITE_ADMIN_EMAILS` con los correos separados por comas, por ejemplo
+`yo@correo.com,otra@correo.com`. Requiere volver a desplegar (push a `main`).
+
+> Esta variable solo controla **qué se ve en la interfaz**. Para que Firestore
+> acepte los borrados, tu UID debe existir igualmente en `admins/{uid}` (Opción A),
+> porque las reglas de seguridad no pueden leer variables de entorno.
+
+Si al borrar ves un error de permisos, casi siempre es que falta publicar
+`firestore.rules` o que no existe tu documento en `admins`.
+

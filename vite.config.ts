@@ -156,16 +156,16 @@ export default defineConfig({
     cssMinify: true,
     rollupOptions: {
       output: {
+        // Separar las dependencias pesadas: el login solo necesita React.
         manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('@react-google-maps')) {
-              return 'vendor';
-            }
-            if (id.includes('clsx') || id.includes('tailwind-merge')) {
-              return 'utils';
-            }
-            return 'vendor';
+          if (!id.includes('node_modules')) return;
+          if (id.includes('firebase') || id.includes('@firebase')) return 'firebase';
+          if (id.includes('leaflet')) return 'leaflet';
+          if (/node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)) {
+            return 'react';
           }
+          if (id.includes('clsx') || id.includes('tailwind-merge')) return 'utils';
+          return 'vendor';
         },
       },
     },

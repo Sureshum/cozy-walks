@@ -287,9 +287,9 @@ function MapComponent({
         >
           <Popup>
             <div className="text-center p-1">
-              <div className="font-semibold text-cozy-800">📍 Tu posición</div>
+              <div className="font-semibold text-cozy-800 font-mono"># Tu posicion</div>
               <div className="text-xs text-cozy-500">
-                Precisión: ~{Math.round(userLocation.accuracy)}m
+                Precision: ~{Math.round(userLocation.accuracy)}m
               </div>
             </div>
           </Popup>
@@ -680,7 +680,7 @@ function MapScreenContent() {
     return (
       <div className="flex items-center justify-center h-full bg-cozy-50 rounded-3xl p-8 text-center">
         <div className="max-w-sm">
-          <div className="text-6xl mb-4">📍</div>
+          <div className="text-6xl mb-4 font-mono">#</div>
           <h3 className="text-xl font-semibold text-cozy-800 mb-2">Geolocalización no disponible</h3>
           <p className="text-cozy-600">
             Por favor, activa la ubicación en tu navegador para disfrutar de la experiencia completa.
@@ -710,8 +710,8 @@ function MapScreenContent() {
       {/* Barra superior */}
       <div className="absolute top-0 inset-x-0 z-50 p-3 md:p-4 flex items-start justify-between gap-2 pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-2 md:gap-3 rounded-2xl bg-white/90 backdrop-blur-sm border border-cozy-200 shadow-cozy px-2.5 py-2 md:px-3">
-          <div className="w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-xl bg-gradient-to-br from-cozy-400 to-terracotta-500 flex items-center justify-center text-white text-lg md:text-xl shadow-cozy">
-            🌿
+          <div className="w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-xl bg-gradient-to-br from-cozy-400 to-terracotta-500 flex items-center justify-center text-white text-lg md:text-xl shadow-cozy font-mono">
+            (
           </div>
           <div className="leading-tight min-w-0">
             <p className="text-sm md:text-base font-bold text-cozy-800 truncate">Cozy Walks</p>
@@ -773,8 +773,8 @@ function MapScreenContent() {
         <div className="pointer-events-auto p-3 md:p-4 space-y-2.5 max-h-[72vh] md:max-h-full overflow-y-auto overscroll-contain">
           {mapMode === 'idle' && !smoothedLocation && (
             <div className="rounded-2xl bg-warm-50 border border-warm-200 p-3 text-xs text-warm-800 flex items-start gap-2">
-              <span aria-hidden="true">📍</span>
-              <span>Permite el acceso a tu ubicación para que podamos trazar tu paseo.</span>
+              <span aria-hidden="true" className="font-mono">#</span>
+              <span>Permite el acceso a tu ubicacion para que podamos trazar tu paseo.</span>
             </div>
           )}
 
@@ -828,7 +828,7 @@ function MapScreenContent() {
                 onClick={clearRoute}
                 className="w-full py-3 rounded-2xl font-semibold text-sm bg-gradient-to-r from-cozy-500 to-terracotta-500 text-white shadow-cozy hover:from-cozy-600 hover:to-terracotta-600 transition-all active:scale-[0.99]"
               >
-                Empezar otro paseo 👟
+                Empezar otro paseo <span className="font-mono">{'>'}</span>
               </button>
               <Leaderboard />
             </>

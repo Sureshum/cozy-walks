@@ -3,6 +3,8 @@ rules_version = '2';
 // Reglas de seguridad de Firestore para Cozy Walks
 // - Cada usuario solo puede escribir su propio perfil y sus paseos.
 // - Cualquier usuario autenticado puede leer los perfiles (necesario para el ranking).
+// - Los administradores (documento `admins/{uid}`) pueden borrar paseos y
+//   editar perfiles para sacar a alguien del ranking.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -13,18 +15,33 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // Admin = existe un documento `admins/{uid}` creado a mano desde la consola.
+    // El cliente NUNCA puede crear ese documento (allow write: if false).
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // Perfiles: users/{uid}
     match /users/{uid} {
       allow read: if signedIn();
-      allow create, update: if isOwner(uid);
-      allow delete: if isOwner(uid);
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isOwner(uid) || isAdmin();
     }
 
     // Paseos: walks/{walkId}
     match /walks/{walkId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update, delete: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Lista de administradores: solo lectura desde la app, escritura manual.
+    match /admins/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     // Bloquear cualquier otra colección por defecto

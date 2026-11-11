@@ -46,7 +46,7 @@ if (isConfigured) {
     console.error('❌ Error inicializando Firebase:', error);
   }
 } else {
-  console.warn('⚠️ Firebase no configurado. Usa variables de entorno VITE_FIREBASE_*');
+  console.warn('[!] Firebase no configurado. Usa variables de entorno VITE_FIREBASE_*');
   console.log('Variables necesarias:');
   console.log('  VITE_FIREBASE_API_KEY');
   console.log('  VITE_FIREBASE_AUTH_DOMAIN');

@@ -90,3 +90,39 @@ html, body, #root {
   .no-print { display: none !important; }
   .map-container { height: 500px !important; }
 }
+
+/* Mejoras responsive para formularios */
+@media (max-width: 480px) {
+  .max-w-md {
+    max-width: 100% !important;
+  }
+  
+  .p-8, .p-10 {
+    padding: 1.5rem !important;
+  }
+}
+
+/* Focus visible mejorado para accesibilidad */
+*:focus-visible {
+  outline: 2px solid #c8754a;
+  outline-offset: 2px;
+}
+
+/* Reducir motion para elementos decorativos */
+@media (prefers-reduced-motion: reduce) {
+  .animate-bounce-gentle,
+  .animate-float,
+  .animate-pulse-soft {
+    animation: none !important;
+  }
+  
+  .avatar-marker {
+    transition: none !important;
+  }
+}
+
+/* Utilidades de tipografía monospace para ASCII */
+.font-mono-ascii {
+  font-family: 'SF Mono', 'Fira Code', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
+  font-feature-settings: 'liga' off, 'calt' off;
+}

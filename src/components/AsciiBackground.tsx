@@ -1,26 +1,25 @@
-// Fondo ASCII reactivo - MÁS caracteres, mejor distribución, más densidad
+// Fondo ASCII reactivo - solo caracteres ASCII imprimibles (sin emojis)
+// Mejor distribución, más densidad y tamaño adaptado al ancho de pantalla.
+// Optimizado para rendimiento: 30fps max, pausa durante input, memoización.
 
 import { memo, useEffect, useRef, useState, useCallback } from 'react';
 
 const ASCII_CHARS = [
-  // Caracteres decorativos
-  '░', '▒', '▓', '█', '◆', '◇', '■', '□', '●', '○', '▲', '△', '▼', '▽', '◉', '◎',
-  '★', '☆', '✦', '✧', '✨', '*', '+', '×', '÷', '≈', '≠', '≤', '≥', '∞', '∑', '∏',
-  // Símbolos técnicos
-  '√', '∫', '∂', '∆', '∇', '∈', '∉', '⊂', '⊃', '∪', '∩', '∀', '∃', '¬', '∧', '∨',
-  '⊕', '⊗', '⊥', '⊤', '⟂', '∠', '∟', '⊾', '≡', '≢', '≣', '≦', '≧', '≨', '≩',
-  // Flechas
-  '←', '→', '↑', '↓', '↔', '↕', '↖', '↗', '↘', '↙', '⇐', '⇒', '⇑', '⇓', '⇔',
-  // Geométricos
-  '◇', '◆', '□', '■', '△', '▲', '▽', '▼', '○', '●', '◎', '◉', '◆', '◇', '◈', '◆',
-  // Naturaleza / Cozy
-  '🍃', '🌿', '🌱', '🌸', '🌼', '🌻', '🍂', '🍁', '🌾', '🌲', '🌳', '🌴', '🌵', '🌿', '☘️', '🍀',
+  // Puntuación y símbolos
+  '.', ',', ':', ';', '-', '=', '+', '*', '/', '\\', '|', '~', '^', '_',
+  '(', ')', '[', ']', '{', '}', '<', '>', "'", '"', '`', '!', '?', '@',
+  '#', '$', '%', '&',
+  // Alfanuméricos sueltos
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'k', 'm', 'n', 'o', 'p', 's', 't', 'w', 'x', 'y', 'z',
+  // Formas simples en ASCII
+  '.', '*', '+', 'o', 'O', 'x', 'X', '-', '=', '~', '^',
 ];
 
 interface AsciiBackgroundProps {
   className?: string;
-  density?: number;        // 0-1: qué tan denso (default: 0.25 - MÁS denso)
-  charSize?: number;       // tamaño base en px (default: 24 - MÁS grande)
+  density?: number;        // 0-1: qué tan denso (default: 0.25)
+  charSize?: number;       // tamaño base en px (default: 24)
   speed?: number;          // velocidad animación (default: 0.8)
   colors?: {
     base: string;
@@ -37,21 +36,35 @@ const DEFAULT_COLORS = {
   glow: 'rgba(255, 107, 107, 0.4)',
 };
 
+// Cache para grids precomputados
+const gridCache = new Map<string, Array<{
+  char: string;
+  x: number;
+  y: number;
+  baseColor: string;
+  currentColor: string;
+  targetColor: string;
+  glow: number;
+  phase: number;
+  speed: number;
+  scale: number;
+  rotation: number;
+  rotationSpeed: number;
+}>>();
+
 export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
   className = '',
-  density = 0.25,        // AUMENTADO: más caracteres
-  charSize = 24,         // AUMENTADO: caracteres más grandes
+  density = 0.25,
+  charSize = 24,
   colors = DEFAULT_COLORS,
-  mouseInfluence = 200,  // AUMENTADO: más radio
+  mouseInfluence = 200,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const lastFrameRef = useRef(0);
   const pausedRef = useRef(false);
   const mouseRef = useRef<{ x: number; y: number }>({ x: -1000, y: -1000 });
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-
-  // Grid de caracteres - memoizado para rendimiento
+  const charSizeRef = useRef(charSize);
   const gridRef = useRef<Array<{
     char: string;
     x: number;
@@ -66,11 +79,21 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
     rotation: number;
     rotationSpeed: number;
   }>>([]);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Inicializar grid - memoizado
-  const initGrid = useCallback((width: number, height: number) => {
-    const cols = Math.ceil(width / charSize);
-    const rows = Math.ceil(height / charSize);
+  // Inicializar grid - con cache
+  const initGrid = useCallback((width: number, height: number, size: number) => {
+    const key = `${width}x${height}x${density}x${size}`;
+    
+    // Verificar cache
+    const cached = gridCache.get(key);
+    if (cached) {
+      gridRef.current = cached.map(cell => ({ ...cell }));
+      return;
+    }
+
+    const cols = Math.ceil(width / size);
+    const rows = Math.ceil(height / size);
     const newGrid = [];
 
     for (let row = 0; row < rows; row++) {
@@ -79,15 +102,15 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
         if (Math.random() > density) continue;
 
         // Posición con algo de jitter para que no sea grid perfecto
-        const jitterX = (Math.random() - 0.5) * charSize * 0.6;
-        const jitterY = (Math.random() - 0.5) * charSize * 0.6;
-        
-        const x = col * charSize + charSize / 2 + jitterX;
-        const y = row * charSize + charSize / 2 + jitterY;
-        
+        const jitterX = (Math.random() - 0.5) * size * 0.6;
+        const jitterY = (Math.random() - 0.5) * size * 0.6;
+
+        const x = col * size + size / 2 + jitterX;
+        const y = row * size + size / 2 + jitterY;
+
         // Variedad de caracteres
         const char = ASCII_CHARS[Math.floor(Math.random() * ASCII_CHARS.length)];
-        
+
         newGrid.push({
           char,
           x,
@@ -97,17 +120,24 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
           targetColor: colors.base,
           glow: 0,
           phase: Math.random() * Math.PI * 2,
-          speed: 0.3 + Math.random() * 1.2,        // Velocidad variada
-          scale: 0.7 + Math.random() * 0.6,        // Escala variada 0.7-1.3
-          rotation: Math.random() * Math.PI * 2,    // Rotación inicial aleatoria
-          rotationSpeed: (Math.random() - 0.5) * 0.02, // Rotación lenta
+          speed: 0.3 + Math.random() * 1.2,
+          scale: 0.7 + Math.random() * 0.6,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.02,
         });
       }
     }
+    
     gridRef.current = newGrid;
-  }, [charSize, density, colors.base]);
+    // Guardar en cache (limitar tamaño del cache)
+    if (gridCache.size > 10) {
+      const firstKey = gridCache.keys().next().value;
+      if (firstKey) gridCache.delete(firstKey);
+    }
+    gridCache.set(key, newGrid.map(cell => ({ ...cell })));
+  }, [density, colors.base]);
 
-  // Animación principal
+  // Animación principal - optimizada
   const animate = useCallback((timeMs?: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -117,14 +147,13 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
 
     const now = typeof timeMs === 'number' ? timeMs : performance.now();
 
-    // Pausado mientras se escribe en un campo: el teclado móvil + blur del panel
-    // hacen caro repintar el canvas, y así el texto va fluido.
+    // Pausado mientras se escribe en un campo
     if (pausedRef.current) {
       animationRef.current = requestAnimationFrame(animate);
       return;
     }
 
-    // Limitar a ~30 fps: el fondo es decorativo y así no compite con la UI
+    // Limitar a ~30 fps
     if (now - lastFrameRef.current < 32) {
       animationRef.current = requestAnimationFrame(animate);
       return;
@@ -138,24 +167,30 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
 
-    // Configuración de texto fuera del bucle (no cambia por carácter)
-    ctx.font = `${charSize}px monospace`;
+    // Configuración de texto fuera del bucle
+    ctx.font = `${charSizeRef.current}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.shadowBlur = 0;
 
+    const hoverColors = colors.hover;
+    const glowColor = colors.glow;
+    const maxDist = mouseInfluence;
+    const mouseX = mouseRef.current.x;
+    const mouseY = mouseRef.current.y;
+
     // Actualizar y dibujar cada carácter
-    gridRef.current.forEach((cell) => {
-      const dx = mouseRef.current.x - cell.x;
-      const dy = mouseRef.current.y - cell.y;
+    for (let i = 0; i < gridRef.current.length; i++) {
+      const cell = gridRef.current[i];
+      const dx = mouseX - cell.x;
+      const dy = mouseY - cell.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = mouseInfluence;
 
       // Efecto de proximidad al mouse
       if (dist < maxDist) {
         const intensity = 1 - dist / maxDist;
-        const colorIndex = Math.floor((cell.x + cell.y + time * 50) % colors.hover.length);
-        cell.targetColor = colors.hover[colorIndex];
+        const colorIndex = Math.floor((cell.x + cell.y + time * 50) % hoverColors.length);
+        cell.targetColor = hoverColors[colorIndex];
         cell.glow = intensity * 20;
         // Ligera atracción hacia el mouse
         cell.x += dx * intensity * 0.005;
@@ -165,7 +200,7 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
         cell.glow *= 0.92;
       }
 
-      // Interpolar color actual hacia target (aproximación simple)
+      // Interpolar color actual hacia target
       cell.currentColor = cell.targetColor;
 
       // Animaciones continuas
@@ -176,9 +211,9 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
       const pulse = Math.sin(cell.phase) * 0.15 + 1;
       const finalScale = cell.scale * pulse;
 
-      // Dibujar glow si está activo (shadowBlur es caro: solo cuando hace falta)
+      // Dibujar glow si está activo
       if (cell.glow > 0.5) {
-        ctx.shadowColor = colors.glow;
+        ctx.shadowColor = glowColor;
         ctx.shadowBlur = cell.glow;
       }
 
@@ -192,12 +227,12 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
       ctx.restore();
 
       if (cell.glow > 0.5) ctx.shadowBlur = 0;
-    });
+    }
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [colors.hover, colors.glow, charSize, mouseInfluence]);
+  }, [colors.hover, colors.glow, mouseInfluence]);
 
-  // Pausar el repintado mientras el usuario escribe (teclado móvil abierto)
+  // Pausar el repintado mientras el usuario escribe
   useEffect(() => {
     const isEditable = (el: Element | null) =>
       !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || (el as HTMLElement).isContentEditable);
@@ -218,7 +253,7 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
     };
   }, []);
 
-  // Manejar resize (con debounce: el teclado móvil dispara muchos eventos)
+  // Manejar resize (con debounce)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -233,10 +268,17 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
       if (width === 0 || height === 0) return;
       if (canvas.width === width && canvas.height === height) return;
 
+      // Caracteres más pequeños en pantallas estrechas (móvil)
+      const effectiveSize =
+        width < 480 ? Math.max(11, Math.round(charSize * 0.55))
+        : width < 768 ? Math.max(14, Math.round(charSize * 0.75))
+        : charSize;
+      charSizeRef.current = effectiveSize;
+
       canvas.width = width;
       canvas.height = height;
       setDimensions({ width, height });
-      initGrid(width, height);
+      initGrid(width, height, effectiveSize);
     };
 
     const resize = () => {
@@ -250,7 +292,7 @@ export const AsciiBackgroundBase: React.FC<AsciiBackgroundProps> = ({
       if (timer) clearTimeout(timer);
       window.removeEventListener('resize', resize);
     };
-  }, [initGrid]);
+  }, [initGrid, charSize]);
 
   // Iniciar animación cuando tenemos dimensiones
   useEffect(() => {

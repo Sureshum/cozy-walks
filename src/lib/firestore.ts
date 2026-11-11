@@ -247,3 +247,50 @@ export async function deleteUserAccount(uid: string): Promise<void> {
   batch.delete(userRef);
   await batch.commit();
 }
+
+// ---------------------------------------------------------------------------
+// Administración
+// ---------------------------------------------------------------------------
+
+// Admin = email listado en VITE_ADMIN_EMAILS o documento en `admins/{uid}`.
+// El documento se crea a mano desde la consola de Firebase (nadie puede
+// autoasignarse el rol desde el navegador).
+export async function isAdminUser(uid: string, email?: string | null): Promise<boolean> {
+  const envAdmins = ((import.meta.env.VITE_ADMIN_EMAILS as string | undefined) || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (email && envAdmins.includes(email.toLowerCase())) return true;
+  if (!isConfigured || !db) return false;
+
+  try {
+    const snap = await getDoc(doc(db, 'admins', uid));
+    return snap.exists();
+  } catch (error) {
+    console.warn('No se pudo comprobar el rol de administrador:', error);
+    return false;
+  }
+}
+
+// Borra las carreras de un usuario y lo saca del ranking.
+// Requiere reglas de Firestore que permitan a un admin escribir en users/walks.
+export async function deleteLeaderboardEntry(userId: string): Promise<void> {
+  checkConfig();
+  const batch = writeBatch(db!);
+
+  const walksRef = collection(db!, 'walks');
+  const walksSnap = await getDocs(query(walksRef, where('userId', '==', userId)));
+  walksSnap.docs.forEach((walkDoc) => batch.delete(walkDoc.ref));
+
+  batch.update(doc(db!, 'users', userId), {
+    'stats.totalKm': 0,
+    'stats.totalWalks': 0,
+    'stats.totalTime': 0,
+    'stats.longestWalk': 0,
+    'stats.streakDays': 0,
+    'settings.shareStats': false,
+  });
+
+  await batch.commit();
+}

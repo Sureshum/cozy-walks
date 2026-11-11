@@ -3,12 +3,12 @@
 import type { DistanceOption, SliderConfig } from '../types';
 
 export const DISTANCE_OPTIONS: DistanceOption[] = [
-  { value: 2, label: '2 km', icon: '🌱' },
-  { value: 3, label: '3 km', icon: '🌿' },
-  { value: 4, label: '4 km', icon: '🍃' },
-  { value: 5, label: '5 km', icon: '🌳' },
-  { value: 7, label: '7 km', icon: '🏞️' },
-  { value: 10, label: '10 km', icon: '⛰️' },
+  { value: 2, label: '2 km', icon: '+' },
+  { value: 3, label: '3 km', icon: '*' },
+  { value: 4, label: '4 km', icon: '#' },
+  { value: 5, label: '5 km', icon: '@' },
+  { value: 7, label: '7 km', icon: '&' },
+  { value: 10, label: '10 km', icon: '%' },
 ];
 
 export const SLIDER_CONFIG: SliderConfig = {
@@ -92,7 +92,7 @@ export const EXCLUSION_ZONES = [
   },
   {
     id: 'zone-3',
-    name: 'Área en Construcción',
+    name: 'Area en Construccion',
     coordinates: [
       { lat: 40.4000, lng: -3.7100 },
       { lat: 40.4000, lng: -3.6950 },
@@ -139,31 +139,31 @@ export const ROUTE_CONFIG = {
   strokeWeightActive: 5,
 };
 
-// Mensajes cozy para la UI
+// Mensajes cozy para la UI (sin emojis, usando ASCII)
 export const COZY_MESSAGES = {
   welcome: [
-    "🌿 ¡Hola! ¿A dónde te apetece pasear hoy?",
-    "🍃 El aire huele a aventura. ¿Nos vamos?",
-    "🌱 Cada paso cuenta. Elige tu camino.",
-    "🌸 Un paseo alegra el alma. ¿Distancia?",
+    "( ¡Hola! A donde te apetece pasear hoy?",
+    "* El aire huele a aventura. Nos vamos?",
+    "# Cada paso cuenta. Elige tu camino.",
+    "@ Un paseo alegra el alma. Distancia?",
   ],
   routing: [
-    "🗺️ Trazando tu camino entre flores...",
-    "🌿 Buscando la ruta más bonita...",
-    "🍃 Calculando senderos secretos...",
+    "+ Trazando tu camino entre flores...",
+    "* Buscando la ruta mas bonita...",
+    "# Calculando senderos secretos...",
   ],
   walking: [
-    "👟 ¡Vamos! Un paso a la vez.",
-    "🌸 Disfruta el camino, no solo la meta.",
-    "🍃 Respira hondo, camina suave.",
+    "> Vamos! Un paso a la vez.",
+    "@ Disfruta el camino, no solo la meta.",
+    "* Respira hondo, camina suave.",
   ],
   completed: [
-    "🎉 ¡Lo lograste! Qué paseo tan bonito.",
-    "🌟 Cada kilómetro cuenta una historia.",
-    "🌿 Volverás a caminar pronto, ¿verdad?",
+    "+ Lo lograste! Que paseo tan bonito.",
+    "* Cada kilometro cuenta una historia.",
+    "# Volveras a caminar pronto, verdad?",
   ],
   error: [
-    "🍂 Ups, algo salió mal. Intentémoslo de nuevo.",
-    "🌧️ El mapa se nubló un momento. Recalculando...",
+    "* Ups, algo salio mal. Intentemoslo de nuevo.",
+    "# El mapa se nublo un momento. Recalculando...",
   ],
 };

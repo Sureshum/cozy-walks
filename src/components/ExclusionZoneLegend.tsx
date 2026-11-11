@@ -9,9 +9,9 @@ interface ExclusionZoneLegendProps {
 }
 
 const riskLabels = {
-  high: { label: 'Alto riesgo', icon: '🚫' },
-  medium: { label: 'Precaución', icon: '⚠️' },
-  low: { label: 'Bajo riesgo', icon: '📍' },
+  high: { label: 'Alto riesgo', icon: '#' },
+  medium: { label: 'Precaucion', icon: '!' },
+  low: { label: 'Bajo riesgo', icon: '*' },
 };
 
 const riskOrder = { high: 0, medium: 1, low: 2 };
@@ -24,11 +24,11 @@ const ExclusionZoneLegend: React.FC<ExclusionZoneLegendProps> = ({ zones }) => {
   return (
     <details
       className="group rounded-2xl bg-white/95 backdrop-blur-sm shadow-cozy-lg border border-cozy-200 overflow-hidden"
-      aria-label="Zonas de exclusión"
+      aria-label="Zonas de exclusion"
     >
       <summary className="flex items-center justify-between gap-2 p-3 cursor-pointer list-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-cozy-400">
         <span className="flex items-center gap-2 text-sm font-semibold text-cozy-800">
-          <span aria-hidden="true">🗺️</span>
+          <span aria-hidden="true" className="font-mono">+</span>
           Zonas a evitar
           <span className="text-[10px] font-medium text-cozy-500 bg-cozy-100 rounded-full px-1.5 py-0.5">
             {zones.length}
@@ -65,7 +65,7 @@ const ExclusionZoneLegend: React.FC<ExclusionZoneLegendProps> = ({ zones }) => {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-cozy-700 truncate">{zone.name}</p>
                   <p className={clsx('text-[10px] flex items-center gap-1', 'text-cozy-500')}>
-                    <span aria-hidden="true">{risk.icon}</span>
+                    <span aria-hidden="true" className="font-mono">{risk.icon}</span>
                     {risk.label}
                   </p>
                 </div>
@@ -74,7 +74,7 @@ const ExclusionZoneLegend: React.FC<ExclusionZoneLegendProps> = ({ zones }) => {
           })}
         </div>
         <p className="text-[10px] text-cozy-400 text-center mt-2 pt-2 border-t border-cozy-100">
-          La ruta evita automáticamente estas áreas
+          La ruta evita automaticamente estas areas
         </p>
       </div>
     </details>
