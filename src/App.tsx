@@ -107,7 +107,7 @@ function AppInner() {
           {/* Footer sutil (solo escritorio) */}
           <footer className="relative z-20 shrink-0 px-6 py-2 hidden md:block">
             <p className="text-center text-[11px] text-cozy-400 max-w-4xl mx-auto">
-              Hecho con <span className="text-red-500" aria-hidden="true">{"<3"}</span> para caminantes sonadores \u00b7 Mapas por <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener" className="underline hover:text-cozy-600">OpenStreetMap</a> \u00b7 Rutas por <a href="https://project-osrm.org/" target="_blank" rel="noopener" className="underline hover:text-cozy-600">OSRM</a>
+              Hecho con <span className="text-red-500" aria-hidden="true">{"<3"}</span> para caminantes sonadores · Mapas por <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener" className="underline hover:text-cozy-600">OpenStreetMap</a> · Rutas por <a href="https://project-osrm.org/" target="_blank" rel="noopener" className="underline hover:text-cozy-600">OSRM</a>
             </p>
           </footer>
         </main>

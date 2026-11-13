@@ -82,7 +82,7 @@ const AuthScreen: React.FC = () => {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
           </svg>
-          Iniciar sesi\u00f3n
+          Iniciar sesión
         </>
       );
     }
@@ -117,7 +117,7 @@ const AuthScreen: React.FC = () => {
             </h1>
             <p className="text-cozy-300 text-sm sm:text-base">
               {mode === 'login'
-                ? 'Inicia sesi\u00f3n para continuar tus paseos'
+                ? 'Inicia sesión para continuar tus paseos'
                 : 'Unete a la comunidad de caminantes cozy'}
             </p>
           </div>
@@ -192,7 +192,7 @@ const AuthScreen: React.FC = () => {
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-cozy-200 text-sm font-medium mb-1.5">
-                Contrase\u00f1a
+                Contraseña
               </label>
               <div className="relative">
                 <input
@@ -201,7 +201,7 @@ const AuthScreen: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+                  placeholder="••••••••"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   required
                   minLength={6}
@@ -212,7 +212,7 @@ const AuthScreen: React.FC = () => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-cozy-400 hover:text-white transition-colors"
-                  aria-label={showPassword ? 'Ocultar contrase\u00f1a' : 'Mostrar contrase\u00f1a'}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
@@ -222,7 +222,7 @@ const AuthScreen: React.FC = () => {
                 </button>
               </div>
               {!passwordValid && formData.password.length > 0 && (
-                <p className="mt-1 text-xs text-cozy-400">M\u00ednimo 6 caracteres</p>
+                <p className="mt-1 text-xs text-cozy-400">Mínimo 6 caracteres</p>
               )}
             </div>
 
@@ -230,7 +230,7 @@ const AuthScreen: React.FC = () => {
             {mode === 'register' && (
               <div>
                 <label htmlFor="confirmPassword" className="block text-cozy-200 text-sm font-medium mb-1.5">
-                  Confirmar contrase\u00f1a
+                  Confirmar contraseña
                 </label>
                 <input
                   id="confirmPassword"
@@ -238,7 +238,7 @@ const AuthScreen: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+                  placeholder="••••••••"
                   autoComplete="new-password"
                   required
                   disabled={isLoading}
@@ -250,7 +250,7 @@ const AuthScreen: React.FC = () => {
                     {passwordMatch ? (
                       <>
                         <svg className="w-3.5 h-3.5 text-sage-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                        <span className="text-sage-400">Las contrase\u00f1as coinciden</span>
+                        <span className="text-sage-400">Las contraseñas coinciden</span>
                       </>
                     ) : (
                       <>
@@ -263,7 +263,7 @@ const AuthScreen: React.FC = () => {
               </div>
             )}
 
-            {/* Bot\u00f3n principal */}
+            {/* Botón principal */}
             <button
               type="submit"
               disabled={isLoading || (mode === 'register' && !registerReady)}
@@ -279,13 +279,13 @@ const AuthScreen: React.FC = () => {
 
           {/* Cambiar modo */}
           <p className="mt-5 sm:mt-6 text-center text-cozy-400 text-sm">
-            {mode === 'login' ? '\u00bfNo tienes cuenta?' : '\u00bfYa tienes cuenta?'} {' '}
+            {mode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'} {' '}
             <button
               onClick={switchMode}
               disabled={isLoading}
               className="text-cozy-300 hover:text-white font-semibold underline underline-offset-2 transition-colors"
             >
-              {mode === 'login' ? 'Reg\u00edstrate' : 'Inicia sesi\u00f3n'}
+              {mode === 'login' ? 'Regístrate' : 'Inicia sesión'}
             </button>
           </p>
 
@@ -293,8 +293,8 @@ const AuthScreen: React.FC = () => {
           <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-white/5">
             <p className="text-center text-xs text-cozy-500">
               {isUsingFirebase
-                ? <>Tus paseos se guardan en la nube para el ranking global \u2601\ufe0f</>
-                : <>Tus datos se guardan localmente en tu navegador.<br />Nunca salen de tu dispositivo \u2764\ufe0f</>}
+                ? <>Tus paseos se guardan en la nube para el ranking global ☁️</>
+                : <>Tus datos se guardan localmente en tu navegador.<br />Nunca salen de tu dispositivo ❤️</>}
             </p>
           </div>
         </div>

@@ -78,7 +78,7 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({
             </div>
           </div>
           <div className="text-right shrink-0">
-            <div className="text-xl font-bold">{isCompleted ? walkedKm.toFixed(1) : routeKm}</div>
+            <div className="text-xl font-bold tabular-nums">{isCompleted ? walkedKm.toFixed(1) : routeKm}</div>
             <div className="text-[10px] opacity-90">{isCompleted ? 'km andados' : 'km ruta'}</div>
           </div>
         </div>
@@ -104,7 +104,7 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({
 
         {/* Estadísticas: compactas mientras se camina (los datos en vivo están en los controles) */}
         {isWalking ? (
-          <div className="hidden md:flex items-center justify-between gap-2 text-[11px] text-cozy-600">
+          <div className="hidden md:flex items-center justify-between gap-2 text-[11px] text-cozy-600 tabular-nums">
             <span className="flex items-center gap-1">
               <span aria-hidden="true" className="font-mono">@</span> {formatDuration(route.duration)}
             </span>
@@ -152,7 +152,7 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ icon, label, value }) => (
   <div className="rounded-xl p-2.5 border bg-cozy-50 border-cozy-200 text-cozy-700 text-center">
     <div className="text-lg mb-0.5 font-mono" aria-hidden="true">{icon}</div>
-    <div className="text-sm font-bold">{value}</div>
+    <div className="text-sm font-bold tabular-nums">{value}</div>
     <div className="text-[10px] opacity-70">{label}</div>
   </div>
 );

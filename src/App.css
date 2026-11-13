@@ -37,6 +37,19 @@ html, body, #root {
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+/* El avatar se mueve por JS (rAF): sin transiciones CSS que dupliquen el efecto */
+.custom-avatar-icon {
+  will-change: transform;
+  pointer-events: auto;
+}
+
+/* Flechas de guía de la ruta: decorativas, no deben capturar clics */
+.route-arrow-icon {
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+
 /* Clase para el contenedor del mapa */
 .map-container {
   width: 100%;

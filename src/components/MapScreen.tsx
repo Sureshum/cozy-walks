@@ -1,6 +1,6 @@
 // Mapa con Leaflet + OpenStreetMap (100% gratis, sin API key, sin límites)
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import {
   MapContainer,
@@ -11,13 +11,12 @@ import {
   useMapEvents,
   useMap,
   Marker,
-  Popup,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { clsx } from 'clsx';
 import type { Coordinate, RouteResult, ExclusionZone, UserLocation, MapMode } from '../types';
-import { haversineDistance, calculateBounds, generateDailyWaypoints, routeCrossesExclusionZones, avoidExclusionZones, smoothPath } from '../utils/routeUtils';
+import { haversineDistance, calculateBearing, calculateBounds, generateDailyWaypoints, routeCrossesExclusionZones, avoidExclusionZones, smoothPath } from '../utils/routeUtils';
 import { ROUTE_CONFIG } from '../utils/constants';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -29,10 +28,20 @@ import RouteInfoPanel from './RouteInfoPanel';
 import ExclusionZoneLegend from './ExclusionZoneLegend';
 import Leaderboard from './Leaderboard';
 
-// Icono personalizado para el avatar
+// Icono personalizado para el avatar.
+// Se cachea por modo + rumbo (redondeado) para que Leaflet no reemplace el DOM
+// del marcador en cada render y el "monito" no parpadee al caminar.
+const avatarIconCache = new Map<string, L.DivIcon>();
+
 const createAvatarIcon = (mapMode: string, heading?: number) => {
   const isWalking = mapMode === 'walking';
   const isPaused = mapMode === 'paused';
+  const roundedHeading = heading === undefined || Number.isNaN(heading)
+    ? undefined
+    : (Math.round(heading / 15) * 15 + 360) % 360;
+  const cacheKey = `${mapMode}|${roundedHeading ?? 'none'}`;
+  const cached = avatarIconCache.get(cacheKey);
+  if (cached) return cached;
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64">
@@ -112,22 +121,25 @@ const createAvatarIcon = (mapMode: string, heading?: number) => {
         <rect x="34" y="16" width="4" height="14" fill="#ef6f22" opacity="0.8" rx="1"/>
       ` : ''}
 
-      ${heading !== undefined ? `
+      ${roundedHeading !== undefined ? `
         <!-- Flecha de dirección -->
-        <g transform="rotate(${heading} 32 32)">
+        <g transform="rotate(${roundedHeading} 32 32)">
           <path d="M32 6 L28 14 L32 10 L36 14 Z" fill="#c8754a" stroke="#b55e3a" stroke-width="1.5"/>
         </g>
       ` : ''}
     </svg>
   `;
 
-  return L.divIcon({
+  const icon = L.divIcon({
     className: 'custom-avatar-icon',
     html: svg,
     iconSize: [48, 48],
     iconAnchor: [24, 48],
     popupAnchor: [0, -48],
   });
+
+  avatarIconCache.set(cacheKey, icon);
+  return icon;
 };
 
 // Icono para el inicio de ruta
@@ -137,6 +149,74 @@ const startIcon = L.divIcon({
   iconSize: [20, 20],
   iconAnchor: [10, 10],
 });
+
+// Flechas de guía a lo largo de la ruta (una cada ~120-200 m según la longitud).
+const routeArrowIconCache = new Map<number, L.DivIcon>();
+
+const createRouteArrowIcon = (bearing: number) => {
+  const degrees = ((Math.round(bearing / 5) * 5) % 360 + 360) % 360;
+  const cached = routeArrowIconCache.get(degrees);
+  if (cached) return cached;
+
+  const icon = L.divIcon({
+    className: 'route-arrow-icon',
+    html: `
+      <div style="width:20px;height:20px;transform:rotate(${degrees}deg);transform-origin:50% 50%;filter:drop-shadow(0 1px 1px rgba(118,60,45,0.45));">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+          <path d="M5 15.5 L12 6 L19 15.5" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+          <path d="M5 15.5 L12 6 L19 15.5" fill="none" stroke="#b55e3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
+  routeArrowIconCache.set(degrees, icon);
+  return icon;
+};
+
+interface RouteArrow {
+  coordinate: Coordinate;
+  bearing: number;
+}
+
+const buildRouteArrows = (path: Coordinate[], totalDistance: number): RouteArrow[] => {
+  if (path.length < 2) return [];
+
+  const spacing = Math.min(200, Math.max(120, totalDistance / 60));
+  const arrows: RouteArrow[] = [];
+  let sincePrevious = 0;
+
+  for (let i = 0; i < path.length - 1 && arrows.length < 120; i++) {
+    const from = path[i];
+    const to = path[i + 1];
+    const segment = haversineDistance(from, to);
+    if (segment < 0.5) continue;
+
+    let travelled = 0;
+    while (sincePrevious + (segment - travelled) >= spacing && arrows.length < 120) {
+      const step = spacing - sincePrevious;
+      const t = (travelled + step) / segment;
+      if (t > 1) break;
+
+      arrows.push({
+        coordinate: {
+          lat: from.lat + (to.lat - from.lat) * t,
+          lng: from.lng + (to.lng - from.lng) * t,
+        },
+        bearing: calculateBearing(from, to),
+      });
+
+      travelled += step;
+      sincePrevious = 0;
+    }
+
+    sincePrevious += segment - travelled;
+  }
+
+  return arrows;
+};
 
 // Puente fiable con la instancia del mapa.
 // No usamos el evento "load" porque en react-leaflet 5 se dispara antes de
@@ -186,6 +266,127 @@ const MapFollowController = ({
   return null;
 };
 
+// Avatar del usuario: se crea una sola vez y se desliza suavemente hasta cada
+// lectura del GPS. Así el monito sigue al usuario sin parpadeos ni saltos.
+const AvatarMarker = ({
+  userLocation,
+  mapMode,
+}: {
+  userLocation: UserLocation;
+  mapMode: string;
+}) => {
+  const map = useMap();
+  const markerRef = useRef<L.Marker | null>(null);
+  const currentRef = useRef<L.LatLng | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const headingRef = useRef<number | undefined>(userLocation.heading);
+
+  headingRef.current = userLocation.heading;
+  const headingKey = userLocation.heading === undefined || userLocation.heading === null
+    ? 'none'
+    : Math.round(userLocation.heading / 15) * 15;
+
+  useEffect(() => {
+    const start = L.latLng(userLocation.coordinate.lat, userLocation.coordinate.lng);
+    const marker = L.marker(start, {
+      icon: createAvatarIcon(mapMode, userLocation.heading),
+      zIndexOffset: 1000,
+      keyboard: false,
+      alt: 'Tu posición',
+    });
+
+    marker.bindPopup(
+      '<div style="text-align:center;padding:2px;font-family:inherit;">' +
+        '<div style="font-weight:600;color:#763c2d;"># Tu posición</div>' +
+        '<div style="font-size:11px;color:#c8754a;">Precisión: ~' + Math.round(userLocation.accuracy) + 'm</div>' +
+      '</div>'
+    );
+    marker.addTo(map);
+    markerRef.current = marker;
+    currentRef.current = start;
+
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      marker.remove();
+      markerRef.current = null;
+      currentRef.current = null;
+    };
+    // Solo se recrea si cambia la instancia del mapa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map]);
+
+  // El icono solo se regenera cuando cambia el modo o el rumbo (cada 15°).
+  useEffect(() => {
+    markerRef.current?.setIcon(createAvatarIcon(mapMode, headingRef.current));
+  }, [mapMode, headingKey]);
+
+  // Interpolación suave entre la posición actual y la nueva lectura del GPS.
+  useEffect(() => {
+    const marker = markerRef.current;
+    if (!marker) return;
+
+    const target = L.latLng(userLocation.coordinate.lat, userLocation.coordinate.lng);
+    const from = currentRef.current ?? target;
+
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    if (from.distanceTo(target) < 0.4) {
+      marker.setLatLng(target);
+      currentRef.current = target;
+      return;
+    }
+
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      marker.setLatLng(target);
+      currentRef.current = target;
+      return;
+    }
+
+    const startedAt = performance.now();
+    const duration = 600;
+    const startLat = from.lat;
+    const startLng = from.lng;
+
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      const next = L.latLng(
+        startLat + (target.lat - startLat) * eased,
+        startLng + (target.lng - startLng) * eased
+      );
+
+      marker.setLatLng(next);
+      currentRef.current = next;
+
+      if (progress < 1) {
+        frameRef.current = requestAnimationFrame(animate);
+      } else {
+        currentRef.current = target;
+        frameRef.current = null;
+      }
+    };
+
+    frameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+  }, [userLocation]);
+
+  return null;
+};
+
 // Componente principal del mapa
 function MapComponent({
   center,
@@ -208,6 +409,11 @@ function MapComponent({
   onMapReady: (map: L.Map) => void;
   onUserInteract: () => void;
 }) {
+  const routeArrows = useMemo(
+    () => (route ? buildRouteArrows(route.path, route.distance) : []),
+    [route]
+  );
+
   return (
     <MapContainer
       center={[center.lat, center.lng]}
@@ -270,6 +476,18 @@ function MapComponent({
         />
       )}
 
+      {/* Flechas que indican el sentido de la ruta */}
+      {routeArrows.map((arrow, index) => (
+        <Marker
+          key={`route-arrow-${index}`}
+          position={[arrow.coordinate.lat, arrow.coordinate.lng]}
+          icon={createRouteArrowIcon(arrow.bearing)}
+          interactive={false}
+          keyboard={false}
+          zIndexOffset={200}
+        />
+      ))}
+
       {/* Marcador de inicio de ruta */}
       {route && route.path.length > 0 && (
         <Marker
@@ -278,22 +496,9 @@ function MapComponent({
         />
       )}
 
-      {/* Avatar del usuario */}
+      {/* Avatar del usuario (sigue la posición GPS con movimiento suave) */}
       {userLocation && (
-        <Marker
-          position={[userLocation.coordinate.lat, userLocation.coordinate.lng]}
-          icon={createAvatarIcon(mapMode, userLocation.heading)}
-          zIndexOffset={1000}
-        >
-          <Popup>
-            <div className="text-center p-1">
-              <div className="font-semibold text-cozy-800 font-mono"># Tu posicion</div>
-              <div className="text-xs text-cozy-500">
-                Precision: ~{Math.round(userLocation.accuracy)}m
-              </div>
-            </div>
-          </Popup>
-        </Marker>
+        <AvatarMarker userLocation={userLocation} mapMode={mapMode} />
       )}
 
       {/* Círculo de precisión GPS */}
@@ -351,7 +556,7 @@ const MapActionButton: React.FC<MapActionButtonProps> = ({
     )}
   >
     {children}
-    <span className="hidden md:inline text-sm font-medium">{label}</span>
+    <span className="hidden md:inline text-sm font-medium whitespace-nowrap">{label}</span>
   </button>
 );
 
@@ -708,24 +913,24 @@ function MapScreenContent() {
       />
 
       {/* Barra superior */}
-      <div className="absolute top-0 inset-x-0 z-50 p-3 md:p-4 flex items-start justify-between gap-2 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-2 md:gap-3 rounded-2xl bg-white/90 backdrop-blur-sm border border-cozy-200 shadow-cozy px-2.5 py-2 md:px-3">
+      <div className="absolute top-0 inset-x-0 z-50 p-3 md:p-4 flex items-center justify-between gap-2 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-2 md:gap-3 min-w-0 rounded-2xl bg-white/90 backdrop-blur-sm border border-cozy-200 shadow-cozy px-2.5 py-2 md:px-3">
           <div className="w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-xl bg-gradient-to-br from-cozy-400 to-terracotta-500 flex items-center justify-center text-white text-lg md:text-xl shadow-cozy font-mono">
             (
           </div>
           <div className="leading-tight min-w-0">
             <p className="text-sm md:text-base font-bold text-cozy-800 truncate">Cozy Walks</p>
-            <p className="text-[10px] md:text-xs text-cozy-500 flex items-center gap-1.5">
+            <p className="text-[10px] md:text-xs text-cozy-500 flex items-center gap-1.5 min-w-0">
               <span className={clsx('w-1.5 h-1.5 rounded-full shrink-0', MODE_DOT[mapMode])} />
-              <span className="truncate">{MODE_LABEL[mapMode]}</span>
+              <span className="truncate min-w-0">{MODE_LABEL[mapMode]}</span>
               {isWalkingMode && accuracy !== null && (
-                <span className="hidden sm:inline text-cozy-400">· GPS ±{accuracy}m</span>
+                <span className="hidden lg:inline shrink-0 text-cozy-400 tabular-nums whitespace-nowrap">· GPS ±{accuracy}m</span>
               )}
             </p>
           </div>
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-1.5 md:gap-2">
+        <div className="pointer-events-auto flex items-center gap-1.5 md:gap-2 shrink-0">
           <MapActionButton
             label="Mi ubicación"
             onClick={handleLocate}

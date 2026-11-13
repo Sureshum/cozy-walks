@@ -68,7 +68,7 @@ const MapControls: React.FC<MapControlsProps> = ({
             {isWalking ? 'Caminando' : 'En pausa'}
           </span>
         </div>
-        <span className="text-xs font-mono text-cozy-500 ml-auto">{progress}%</span>
+        <span className="text-xs font-mono text-cozy-500 ml-auto tabular-nums">{progress}%</span>
       </div>
 
       <div className="h-2 md:h-2.5 bg-cozy-100 rounded-full overflow-hidden mb-3 md:mb-4">
@@ -84,22 +84,22 @@ const MapControls: React.FC<MapControlsProps> = ({
       {/* Estadísticas */}
       <div className="grid grid-cols-3 gap-1.5 md:gap-2 text-center mb-3 md:mb-4">
         <div className="p-1.5 md:p-2 bg-cozy-50 rounded-xl">
-          <div className="text-sm md:text-lg font-bold text-cozy-700">{walkedKm.toFixed(1)}</div>
+          <div className="text-sm md:text-lg font-bold text-cozy-700 tabular-nums">{walkedKm.toFixed(1)}</div>
           <div className="text-[9px] md:text-xs text-cozy-500">km andados</div>
         </div>
         <div className="p-1.5 md:p-2 bg-cozy-50 rounded-xl">
-          <div className="text-sm md:text-lg font-bold text-cozy-700">{formatDuration(elapsedSeconds)}</div>
+          <div className="text-sm md:text-lg font-bold text-cozy-700 tabular-nums">{formatDuration(elapsedSeconds)}</div>
           <div className="text-[9px] md:text-xs text-cozy-500">tiempo</div>
         </div>
         <div className="p-1.5 md:p-2 bg-cozy-50 rounded-xl">
-          <div className="text-sm md:text-lg font-bold text-cozy-700">
+          <div className="text-sm md:text-lg font-bold text-cozy-700 tabular-nums">
             {speedKmh > 0 ? speedKmh.toFixed(1) : '—'}
           </div>
           <div className="text-[9px] md:text-xs text-cozy-500">km/h</div>
         </div>
       </div>
 
-      <p className="text-[10px] md:text-[11px] text-cozy-400 text-center mb-2.5 md:mb-3">
+      <p className="text-[10px] md:text-[11px] text-cozy-400 text-center mb-2.5 md:mb-3 tabular-nums">
         Te quedan ~{remainingKm.toFixed(1)} km
         {currentRoute ? ` · ruta de ${(currentRoute.distance / 1000).toFixed(1)} km` : ''}
       </p>

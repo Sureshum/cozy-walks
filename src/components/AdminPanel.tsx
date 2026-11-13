@@ -70,7 +70,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ entries, isUsingFirebase, onClo
             </button>
           </div>
           <p className="mt-2 text-[11px] text-cozy-500">
-            {isUsingFirebase ? 'Ranking global (Firestore)' : 'Ranking local (este dispositivo)'} \u00b7 Esta accion no se puede deshacer
+            {isUsingFirebase ? 'Ranking global (Firestore)' : 'Ranking local (este dispositivo)'} · Esta accion no se puede deshacer
           </p>
         </div>
 
@@ -97,7 +97,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ entries, isUsingFirebase, onClo
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-cozy-800 truncate text-sm sm:text-base">{entry.username}</p>
                   <p className="text-[11px] sm:text-xs text-cozy-500">
-                    {entry.totalKm} km \u00b7 {entry.totalWalks} paseos
+                    {entry.totalKm} km · {entry.totalWalks} paseos
                   </p>
                 </div>
 

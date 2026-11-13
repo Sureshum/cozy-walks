@@ -128,7 +128,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ initialOpen = false, onClose 
                                 </div>
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-cozy-400 to-terracotta-500 flex items-center justify-center text-white font-bold text-sm sm:text-base md:text-lg shadow-cozy z-10">{index + 1}</div>
                               </div>
-                              <div className="mt-2 text-center w-full px-0.5"><p className="font-semibold text-cozy-800 truncate text-xs sm:text-sm">{entry.username}</p><p className="text-[10px] sm:text-xs text-cozy-500 truncate">{entry.totalKm} km \u00b7 {entry.totalWalks} paseos</p></div>
+                              <div className="mt-2 text-center w-full px-0.5"><p className="font-semibold text-cozy-800 truncate text-xs sm:text-sm">{entry.username}</p><p className="text-[10px] sm:text-xs text-cozy-500 truncate">{entry.totalKm} km · {entry.totalWalks} paseos</p></div>
                             </div>
                           );
                         })}
@@ -142,7 +142,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ initialOpen = false, onClose 
                       {entries.slice(0, 10).map((entry, index) => (
                         <div key={entry.userId} className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-cozy-50 border border-cozy-100 hover:bg-cozy-100 transition-colors">
                           <div className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${index < 3 ? 'bg-gradient-to-br from-cozy-400 to-terracotta-500 text-white' : 'bg-cozy-200 text-cozy-600'}`}>{index + 1}</div>
-                          <div className="flex-1 min-w-0"><p className="font-medium text-cozy-800 truncate text-sm sm:text-base">{entry.username}</p><p className="text-[11px] sm:text-xs text-cozy-500">{entry.totalKm} km \u00b7 {entry.totalWalks} paseos</p></div>
+                          <div className="flex-1 min-w-0"><p className="font-medium text-cozy-800 truncate text-sm sm:text-base">{entry.username}</p><p className="text-[11px] sm:text-xs text-cozy-500">{entry.totalKm} km · {entry.totalWalks} paseos</p></div>
                           <div className="text-right hidden xs:block sm:block"><p className="font-semibold text-cozy-700 text-sm">{entry.totalKm} km</p><p className="text-[10px] sm:text-xs text-cozy-500">{entry.totalWalks} paseos</p></div>
                         </div>
                       ))}
@@ -190,7 +190,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ initialOpen = false, onClose 
           {entries.slice(0, 5).map((entry, index) => (
             <div key={entry.userId} className="flex items-center gap-3 p-2 rounded-xl hover:bg-cozy-50 transition-colors">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${index < 3 ? 'bg-gradient-to-br from-cozy-400 to-terracotta-500 text-white' : 'bg-cozy-200 text-cozy-600'}`}>{index + 1}</div>
-              <div className="flex-1 min-w-0"><p className="font-medium text-cozy-800 truncate text-sm">{entry.username}</p><p className="text-xs text-cozy-500">{entry.totalKm} km \u00b7 {entry.totalWalks} paseos</p></div>
+              <div className="flex-1 min-w-0"><p className="font-medium text-cozy-800 truncate text-sm">{entry.username}</p><p className="text-xs text-cozy-500">{entry.totalKm} km · {entry.totalWalks} paseos</p></div>
               <div className="text-right"><p className="font-semibold text-cozy-700 text-sm">{entry.totalKm} km</p><p className="text-[10px] text-cozy-500">{entry.totalWalks} paseos</p></div>
             </div>
           ))}

@@ -149,7 +149,7 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
             )}
             aria-hidden="true"
           >
-            <span className="text-xl md:text-2xl font-bold">{value}</span>
+            <span className="text-xl md:text-2xl font-bold tabular-nums">{value}</span>
             <span className="text-xs font-medium opacity-90 ml-0.5">km</span>
           </div>
         </div>
@@ -285,7 +285,7 @@ const DistanceSlider: React.FC<DistanceSliderProps> = ({
               <span
                 key={option.value}
                 className={clsx(
-                  'absolute top-0 whitespace-nowrap transition-colors duration-200',
+                  'absolute top-0 whitespace-nowrap transition-colors duration-200 tabular-nums',
                   isActive ? 'text-cozy-700 font-semibold' : 'text-cozy-500'
                 )}
                 style={{
